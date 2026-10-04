@@ -1,4 +1,4 @@
-import { autolyrics, type JobLyrics } from "@/auto/api/autolyrics-client";
+import { type JobLyrics, autolyrics } from "@/auto/api/autolyrics-client";
 import { saveLinkedJob } from "@/auto/editor/job-autosave";
 import { type ReviewCheck, useJobLinkStore } from "@/auto/editor/job-link-store";
 import { describeFlags, lineBounds, lineDisplay, needsReview } from "@/auto/review/flags";

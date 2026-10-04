@@ -1,4 +1,4 @@
-import { ApiError, autolyrics, type JobEvent } from "@/auto/api/autolyrics-client";
+import { ApiError, type JobEvent, autolyrics } from "@/auto/api/autolyrics-client";
 import { stageViews } from "@/auto/api/use-job-events";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -68,5 +68,16 @@ describe("stageViews", () => {
     ]);
     expect(views[0]).toMatchObject({ message: "Artist – Song", started: 1, finished: 2.5 });
     expect(views[1].finished).toBeNull();
+  });
+
+  it("shows live progress only on a running stage", () => {
+    const progress = {
+      audio: { stage: "audio" as const, label: "Downloading", fraction: 0.4, detail: "1.0 MB" },
+      resolve: { stage: "resolve" as const, label: "Old", fraction: 1, detail: "" },
+    };
+    const views = stageViews([event("resolve", "done", 1), event("audio", "running", 2)], progress);
+    expect(views[1].progress).toEqual(progress.audio);
+    expect(views[0].progress).toBeNull();
+    expect(views[2].progress).toBeNull();
   });
 });

@@ -406,3 +406,17 @@ input[type="range"].settings-slider::-moz-range-progress {
     border-radius: 6px;
   }
 }
+
+/* Job page: a step that cannot tell how far along it is. */
+@utility progress-indeterminate {
+  animation: progress-indeterminate 1.4s ease-in-out infinite;
+}
+
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}

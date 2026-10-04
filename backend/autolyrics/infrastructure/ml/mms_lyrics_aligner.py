@@ -8,6 +8,7 @@ import numpy as np
 import soundfile as sf
 
 from autolyrics.application.interfaces.audio import ILyricsAligner
+from autolyrics.application.interfaces.progress import NO_PROGRESS, IProgress
 from autolyrics.domain.lyrics import Line, Lyrics, Word
 from autolyrics.domain.services.language_guesser import LanguageGuesser
 from autolyrics.domain.services.offset_estimator import OffsetEstimator
@@ -93,11 +94,12 @@ class MmsLyricsAligner(ILyricsAligner):
 
     # -- ILyricsAligner -------------------------------------------------------
 
-    def align(self, lyrics: Lyrics, vocals: Path, workspace: Path) -> dict:
+    def align(self, lyrics: Lyrics, vocals: Path, workspace: Path,
+              progress: IProgress = NO_PROGRESS) -> dict:
         with self._lock:
             language = self._languages.guess(lyrics)
             run = self._run(vocals, workspace, language)
-            stats = self._align(lyrics, run)
+            stats = self._align(lyrics, run, progress)
             # Space-less scripts (Japanese) are placed line by line with their written words
             # first, which is robust; only then is each line split into words and those are timed
             # inside the line's span. Splitting before placing lets a chorus wander off.
@@ -185,13 +187,15 @@ class MmsLyricsAligner(ILyricsAligner):
         return (max(0.0, line.begin + offset - self.LINE_PADDING),
                 min(duration, line.end + offset + self.LINE_PADDING))
 
-    def _align(self, lyrics: Lyrics, run: AlignmentRun) -> dict:
+    def _align(self, lyrics: Lyrics, run: AlignmentRun,
+               progress: IProgress = NO_PROGRESS) -> dict:
         lines = lyrics.content_lines
         line_synced = all(line.begin is not None and line.end is not None for line in lines)
         for w in (w for line in lines for w in line.all_words):
             w.begin = w.end = w.confidence = None
             w.flags = []
 
+        progress.update(None, "placing the whole song")
         run.align_song(lines)
         line_offset, failed, source_timed = 0.0, 0, 0
         if line_synced:
@@ -199,7 +203,9 @@ class MmsLyricsAligner(ILyricsAligner):
             line_offset = float(np.median(offsets)) if offsets else 0.0
             previous_end = 0.0
             source_timed = 0
-            for line, offset in zip(lines, offsets or [0.0] * len(lines), strict=True):
+            for number, (line, offset) in enumerate(
+                    zip(lines, offsets or [0.0] * len(lines), strict=True), 1):
+                progress.update(number / len(lines), f"line {number} of {len(lines)}")
                 start, end = self._window(line, run.duration, offset)
                 # Lines are sung in order: a line cannot start before the previous one ended,
                 # which keeps a repeated chorus line from landing on the repeat before it.

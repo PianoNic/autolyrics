@@ -34,8 +34,12 @@ class TranscribeLyricsHandler(ICommandHandler[TranscribeLyricsCommand, Unit]):
                                                  "with Whisper")
         started = time.time()
         try:
-            vocals = await asyncio.to_thread(self._separator.separate, ctx.audio, ctx.workspace)
-            lyrics = await asyncio.to_thread(self._transcriber.transcribe, vocals, ctx.workspace)
+            vocals = await asyncio.to_thread(
+                self._separator.separate, ctx.audio, ctx.workspace,
+                ctx.reporter.progress(Stage.LYRICS, "Isolating vocals"))
+            lyrics = await asyncio.to_thread(
+                self._transcriber.transcribe, vocals, ctx.workspace, None,
+                ctx.reporter.progress(Stage.LYRICS, "Transcribing (Whisper)"))
         except Exception as error:  # model, decoder and memory errors alike
             raise await ctx.reporter.fail(Stage.LYRICS, f"transcription failed: {error}") from error
         finally:

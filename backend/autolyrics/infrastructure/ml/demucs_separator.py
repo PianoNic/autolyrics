@@ -6,6 +6,7 @@ import numpy as np
 import soundfile as sf
 
 from autolyrics.application.interfaces.audio import IVocalSeparator
+from autolyrics.application.interfaces.progress import NO_PROGRESS, IProgress
 from autolyrics.infrastructure.media.ffmpeg import Ffmpeg
 
 
@@ -19,7 +20,8 @@ class DemucsVocalSeparator(IVocalSeparator):
         self._ffmpeg = ffmpeg
         self._model_name = model_name
 
-    def separate(self, audio: Path, workspace: Path) -> Path:
+    def separate(self, audio: Path, workspace: Path,
+                 progress: IProgress = NO_PROGRESS) -> Path:
         vocals_path = workspace / self.VOCALS_FILE
         if vocals_path.exists():
             return vocals_path
@@ -45,7 +47,8 @@ class DemucsVocalSeparator(IVocalSeparator):
         torch.manual_seed(self.SEED)
         with torch.no_grad():
             sources = apply_model(model, ((wav - mean) / std)[None], device=device, shifts=1,
-                                  split=True, overlap=0.25, progress=False)[0]
+                                  split=True, overlap=0.25, progress=False,
+                                  callback=self._reporter(progress, wav.shape[-1], rate))[0]
         vocals = sources[model.sources.index("vocals")] * std + mean
         sf.write(vocals_path, vocals.cpu().numpy().T.astype(np.float32), rate, subtype="PCM_16")
 
@@ -55,3 +58,15 @@ class DemucsVocalSeparator(IVocalSeparator):
             torch.cuda.empty_cache()
         mix_path.unlink(missing_ok=True)
         return vocals_path
+
+    @staticmethod
+    def _reporter(progress: IProgress, length: int, rate: int):
+        """Demucs calls back as each segment of each model in the bag finishes."""
+        def callback(info: dict) -> None:
+            if info.get("state") != "end":
+                return
+            models = max(1, info.get("models", 1))
+            done = min(1.0, (info.get("segment_offset", 0) + 8 * rate) / max(1, length))
+            model = info.get("model_idx_in_bag", 0)
+            progress.update((model + done) / models, f"model {model + 1} of {models}")
+        return callback

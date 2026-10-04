@@ -11,6 +11,7 @@ from autolyrics.application.interfaces.audio import (
 from autolyrics.application.interfaces.llm import ILlmClient
 from autolyrics.application.interfaces.lyrics import ILyricsProvider
 from autolyrics.application.interfaces.media import IMediaResolver
+from autolyrics.application.interfaces.progress import NO_PROGRESS, IProgress
 from autolyrics.composition.container import Container
 from autolyrics.domain.candidate import LyricsCandidate, LyricsQuery
 from autolyrics.domain.lyrics import Line, Lyrics, SyncType, Word
@@ -30,7 +31,9 @@ class FakeMedia(IMediaResolver):
         return Track(url, "Never Gonna Give You Up", ["Rick Astley"], video_id="lYBUbBu4W08",
                      audio=[AudioRendition("k", "media", ".m4a", 129.0, None)])
 
-    async def download_audio(self, track: Track, directory: Path) -> Path:
+    async def download_audio(self, track: Track, directory: Path,
+                             progress: IProgress = NO_PROGRESS) -> Path:
+        progress.update(1.0, "fake")
         path = directory / "source.m4a"
         path.write_bytes(b"audio")
         return path
@@ -62,7 +65,8 @@ class CrashingProvider(ILyricsProvider):
 
 
 class FakeSeparator(IVocalSeparator):
-    def separate(self, audio: Path, workspace: Path) -> Path:
+    def separate(self, audio: Path, workspace: Path,
+                 progress: IProgress = NO_PROGRESS) -> Path:
         path = workspace / "vocals.wav"
         path.write_bytes(b"vocals")
         return path
@@ -76,7 +80,8 @@ class FakeAligner(ILyricsAligner):
         self.released = 0
         self.realigned: list[tuple[float, float]] = []
 
-    def align(self, lyrics: Lyrics, vocals: Path, workspace: Path) -> dict:
+    def align(self, lyrics: Lyrics, vocals: Path, workspace: Path,
+              progress: IProgress = NO_PROGRESS) -> dict:
         t = 10.0
         for line in lyrics.content_lines:
             for w in line.all_words:
@@ -108,7 +113,8 @@ class FakeTranscriber(ITranscriber):
         self.text = text
         self.released = 0
 
-    def transcribe(self, vocals: Path, workspace: Path, language: str | None = None) -> Lyrics:
+    def transcribe(self, vocals: Path, workspace: Path, language: str | None = None,
+                   progress: IProgress = NO_PROGRESS) -> Lyrics:
         lines = [Line(words=Word.tokenize(t), begin=10.0 * i, end=10.0 * i + 4)
                  for i, t in enumerate(self.text.splitlines()) if t.strip()]
         lyrics = Lyrics(lines=lines)

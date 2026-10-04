@@ -1,6 +1,7 @@
-import { autolyrics, type JobDetail } from "@/auto/api/autolyrics-client";
+import { type JobDetail, autolyrics } from "@/auto/api/autolyrics-client";
 import { type StageView, stageViews, useJobEvents } from "@/auto/api/use-job-events";
 import { JobStatusBadge } from "@/auto/ui/job-status-badge";
+import { ProgressBar } from "@/auto/ui/progress-bar";
 import { cn } from "@/utils/cn";
 import {
   IconArrowLeft,
@@ -41,6 +42,20 @@ const StageIcon: React.FC<{ status: StageView["status"] }> = ({ status }) => {
   }
 };
 
+/** The live bar of a running stage: its current step's share, or a stripe while it cannot tell. */
+const StageProgressRow: React.FC<{ stage: StageView }> = ({ stage }) => {
+  const progress = stage.progress;
+  const label = progress?.label ?? STAGE_LABELS[stage.stage];
+  const percent = progress?.fraction == null ? null : `${Math.round(progress.fraction * 100)}%`;
+  const caption = [progress?.label, progress?.detail, percent].filter(Boolean).join(" · ");
+  return (
+    <div className="mt-1.5 flex flex-col gap-1">
+      <ProgressBar fraction={progress?.fraction ?? null} label={label} />
+      {caption && <span className="text-xs tabular-nums text-composer-text-faint">{caption}</span>}
+    </div>
+  );
+};
+
 const StageList: React.FC<{ stages: StageView[] }> = ({ stages }) => (
   <ol className="flex flex-col gap-2" aria-label="Progress">
     {stages.map((stage) => (
@@ -48,7 +63,7 @@ const StageList: React.FC<{ stages: StageView[] }> = ({ stages }) => (
         <span className="mt-0.5">
           <StageIcon status={stage.status} />
         </span>
-        <div className="flex min-w-0 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col">
           <span
             className={cn("text-sm", stage.status === "pending" ? "text-composer-text-faint" : "text-composer-text")}
           >
@@ -60,6 +75,7 @@ const StageList: React.FC<{ stages: StageView[] }> = ({ stages }) => (
             )}
           </span>
           {stage.message && <span className="text-xs text-composer-text-muted">{stage.message}</span>}
+          {stage.status === "running" && <StageProgressRow stage={stage} />}
         </div>
       </li>
     ))}
@@ -73,6 +89,7 @@ const JobPage: React.FC = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   // The detail (report, title) is fetched once and again when the job finishes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: live.status is the refetch trigger
   useEffect(() => {
     if (!jobId) return;
     autolyrics
@@ -88,14 +105,17 @@ const JobPage: React.FC = () => {
   useEffect(() => {
     if (status === "done" && jobId) navigate(`/editor?job=${encodeURIComponent(jobId)}`, { replace: true });
   }, [status, jobId, navigate]);
-  const stages = stageViews(live.events.length > 0 ? live.events : (job?.events ?? []));
+  const stages = stageViews(live.events.length > 0 ? live.events : (job?.events ?? []), live.progress);
   const error = live.error ?? job?.error ?? null;
 
   return (
     <main className="min-h-screen bg-composer-bg text-composer-text">
       <div className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-8">
         <nav>
-          <Link to="/" className="inline-flex items-center gap-1 text-sm text-composer-text-muted hover:text-composer-text">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1 text-sm text-composer-text-muted hover:text-composer-text"
+          >
             <IconArrowLeft size={16} /> All songs
           </Link>
         </nav>
@@ -122,7 +142,6 @@ const JobPage: React.FC = () => {
             {error}
           </p>
         )}
-
       </div>
     </main>
   );

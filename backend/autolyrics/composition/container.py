@@ -22,8 +22,10 @@ from autolyrics.application.jobs.edit_commands import (
 from autolyrics.application.jobs.lyrics_publisher import LyricsPublisher
 from autolyrics.application.jobs.notifications import (
     BroadcastJobEventHandler,
+    BroadcastJobProgressHandler,
     BroadcastJobStatusHandler,
     JobEventRaised,
+    JobProgressed,
     JobStatusChanged,
     RecordJobEventHandler,
 )
@@ -194,6 +196,8 @@ class Container:
         self.on(JobEventRaised, RecordJobEventHandler, lambda: RecordJobEventHandler(repo))
         self.on(JobEventRaised, BroadcastJobEventHandler,
                 lambda: BroadcastJobEventHandler(self.broadcaster))
+        self.on(JobProgressed, BroadcastJobProgressHandler,
+                lambda: BroadcastJobProgressHandler(self.broadcaster))
         self.on(JobStatusChanged, BroadcastJobStatusHandler,
                 lambda: BroadcastJobStatusHandler(self.broadcaster))
 

@@ -180,3 +180,36 @@ class TestPastedLyrics:
         assert all(w.timed for w in lyrics.all_words)
         report = harness.run(harness.mediator.send(GetJobQuery(result.id))).report
         assert report["chosen"]["source"] == "user"
+
+
+class TestStageProgress:
+    def test_updates_from_a_worker_thread_are_published_and_throttled(self):
+        import asyncio
+
+        from autolyrics.application.jobs.notifications import JobProgressed
+        from autolyrics.application.pipeline.reporter import StageReporter
+        from autolyrics.domain.job import Stage
+
+        class Publisher:
+            def __init__(self):
+                self.seen = []
+
+            async def publish(self, notification):
+                self.seen.append(notification)
+
+        async def run():
+            publisher = Publisher()
+            progress = StageReporter(publisher, "job").progress(Stage.ALIGN, "Aligning words")
+
+            def work():
+                for i in range(1, 101):
+                    progress.update(i / 100, f"line {i}")
+
+            await asyncio.to_thread(work)
+            await asyncio.sleep(0.05)
+            return publisher.seen
+
+        seen = asyncio.run(run())
+        assert all(isinstance(n, JobProgressed) for n in seen)
+        assert 2 <= len(seen) < 10  # the first update, then only the final one gets through
+        assert seen[-1].fraction == 1.0 and seen[-1].label == "Aligning words"

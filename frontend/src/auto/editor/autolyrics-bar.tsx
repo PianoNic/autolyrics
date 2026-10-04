@@ -64,7 +64,10 @@ const ChecksMenu: React.FC = () => {
     >
       <ul className="flex max-h-96 w-96 flex-col overflow-y-auto p-1.5" aria-label="Lines to check">
         {checks.map((check, index) => (
-          <li key={`${check.begin}-${check.label}`} className="flex items-start gap-1 rounded-lg hover:bg-composer-button">
+          <li
+            key={`${check.begin}-${check.label}`}
+            className="flex items-start gap-1 rounded-lg hover:bg-composer-button"
+          >
             <button
               type="button"
               aria-label={check.done ? "Mark as not checked" : "Mark as checked"}
@@ -82,7 +85,12 @@ const ChecksMenu: React.FC = () => {
               onClick={() => jump(check.begin)}
               className="flex min-w-0 flex-1 flex-col py-1.5 pr-2 text-left"
             >
-              <span className={cn("truncate text-sm", check.done ? "text-composer-text-faint line-through" : "text-composer-text")}>
+              <span
+                className={cn(
+                  "truncate text-sm",
+                  check.done ? "text-composer-text-faint line-through" : "text-composer-text",
+                )}
+              >
                 <span className="mr-2 text-xs tabular-nums text-composer-text-faint">{formatTime(check.begin, 0)}</span>
                 {check.label}
               </span>
@@ -118,7 +126,7 @@ const DownloadsMenu: React.FC<{ jobId: string }> = ({ jobId }) => (
           </a>
         </li>
       ))}
-          </ul>
+    </ul>
   </Popover>
 );
 

@@ -7,6 +7,7 @@ from mediatorx import UNIT, ICommand, ICommandHandler, Unit
 from autolyrics.application.interfaces.audio import ITranscriber, IVocalSeparator
 from autolyrics.application.interfaces.jobs import IJobRepository
 from autolyrics.application.interfaces.llm import ILlmClient
+from autolyrics.application.interfaces.progress import IProgress
 from autolyrics.application.pipeline.context import PipelineContext
 from autolyrics.application.pipeline.polish_prompt import PolishPrompt
 from autolyrics.domain.job import Stage
@@ -42,10 +43,11 @@ class PolishLyricsHandler(ICommandHandler[PolishLyricsCommand, Unit]):
         return (ctx.audio is not None and chosen is not None
                 and chosen.source not in ("user", "file") and "transcription" not in ctx.report)
 
-    def _hear(self, ctx: PipelineContext):
+    def _hear(self, ctx: PipelineContext, separating: IProgress, hearing: IProgress):
         try:
-            vocals = self._separator.separate(ctx.audio, ctx.workspace)
-            return self._transcriber.transcribe(vocals, ctx.workspace, ctx.lyrics.metadata.language)
+            vocals = self._separator.separate(ctx.audio, ctx.workspace, separating)
+            return self._transcriber.transcribe(vocals, ctx.workspace,
+                                                ctx.lyrics.metadata.language, hearing)
         except Exception:  # noqa: BLE001 - a second opinion only; the clean-up works without it
             return None
         finally:
@@ -70,7 +72,9 @@ class PolishLyricsHandler(ICommandHandler[PolishLyricsCommand, Unit]):
             # actually contains is the only second opinion left.
             await ctx.reporter.running(Stage.POLISH, "All sources agree; checking them against "
                                                      "what Whisper hears")
-            witness = await asyncio.to_thread(self._hear, ctx)
+            witness = await asyncio.to_thread(
+                self._hear, ctx, ctx.reporter.progress(Stage.POLISH, "Isolating vocals"),
+                ctx.reporter.progress(Stage.POLISH, "Listening (Whisper)"))
             if witness is not None:
                 versions = [self._comparer.witness(self.WITNESS, witness)]
         decisions = self._comparer.decisions(ctx.lyrics, versions)

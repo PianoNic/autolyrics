@@ -1,4 +1,4 @@
-import { ApiError, autolyrics, type Health, type JobSummary } from "@/auto/api/autolyrics-client";
+import { ApiError, type Health, type JobSummary, autolyrics } from "@/auto/api/autolyrics-client";
 import { JobStatusBadge } from "@/auto/ui/job-status-badge";
 import { Button } from "@/ui/button";
 import { IconButton } from "@/ui/icon-button";

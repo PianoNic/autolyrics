@@ -15,6 +15,14 @@ interface JobEvent {
   at: number;
 }
 
+/** Live progress of one step of a running stage; `fraction` is null when it cannot tell. */
+interface StageProgress {
+  stage: Stage;
+  label: string;
+  fraction: number | null;
+  detail: string;
+}
+
 interface JobSummary {
   id: string;
   status: JobStatus;
@@ -111,7 +119,10 @@ interface Health {
   lyrics_api_key: boolean;
 }
 
-type StreamPayload = { type: "status"; status: JobStatus; error: string | null } | { type: "event"; event: JobEvent };
+type StreamPayload =
+  | { type: "status"; status: JobStatus; error: string | null }
+  | { type: "event"; event: JobEvent }
+  | ({ type: "progress" } & StageProgress);
 
 // -- Errors -------------------------------------------------------------------
 
@@ -188,5 +199,6 @@ export type {
   LyricLine,
   LyricWord,
   Stage,
+  StageProgress,
   StreamPayload,
 };

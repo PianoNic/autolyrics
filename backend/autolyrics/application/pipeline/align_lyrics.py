@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from mediatorx import UNIT, ICommand, ICommandHandler, Unit
 
 from autolyrics.application.interfaces.audio import ILyricsAligner, ITranscriber, IVocalSeparator
+from autolyrics.application.interfaces.progress import IProgress
 from autolyrics.application.pipeline.context import PipelineContext
 from autolyrics.domain.job import Stage
 from autolyrics.domain.lyrics import SyncType
@@ -38,7 +39,9 @@ class AlignLyricsHandler(ICommandHandler[AlignLyricsCommand, Unit]):
         await ctx.reporter.running(Stage.ALIGN, "Isolating vocals (Demucs)")
         started = time.time()
         try:
-            vocals = await asyncio.to_thread(self._separator.separate, ctx.audio, ctx.workspace)
+            vocals = await asyncio.to_thread(
+                self._separator.separate, ctx.audio, ctx.workspace,
+                ctx.reporter.progress(Stage.ALIGN, "Isolating vocals"))
             await ctx.reporter.running(
                 Stage.ALIGN, f"Vocals isolated in {time.time() - started:.0f}s; "
                 + ("checking the source's timing against them" if word_level else "aligning words"))
@@ -48,9 +51,12 @@ class AlignLyricsHandler(ICommandHandler[AlignLyricsCommand, Unit]):
                 if ctx.lyrics.sync_type == SyncType.UNSYNCED:
                     await ctx.reporter.running(
                         Stage.ALIGN, "No line times; finding where each line is sung (Whisper)")
-                    ctx.report["anchoring"] = await asyncio.to_thread(self._anchor, ctx, vocals)
-                result = await asyncio.to_thread(self._aligner.align, ctx.lyrics, vocals,
-                                                 ctx.workspace)
+                    ctx.report["anchoring"] = await asyncio.to_thread(
+                        self._anchor, ctx, vocals,
+                        ctx.reporter.progress(Stage.ALIGN, "Finding the lines (Whisper)"))
+                result = await asyncio.to_thread(
+                    self._aligner.align, ctx.lyrics, vocals, ctx.workspace,
+                    ctx.reporter.progress(Stage.ALIGN, "Aligning words"))
         except Exception as error:  # model, decoder and memory errors alike
             raise await ctx.reporter.fail(Stage.ALIGN, str(error)) from error
         finally:
@@ -75,12 +81,12 @@ class AlignLyricsHandler(ICommandHandler[AlignLyricsCommand, Unit]):
                 f"uncertain, {result['interpolated']} interpolated", **result)
         return UNIT
 
-    def _anchor(self, ctx: PipelineContext, vocals) -> dict:
+    def _anchor(self, ctx: PipelineContext, vocals, progress: IProgress) -> dict:
         """Plain text has no line times, and a whole song is a lot to align blind: a
         transcription knows where lines are sung even where it misheard them."""
         try:
             heard = self._transcriber.transcribe(vocals, ctx.workspace,
-                                                 ctx.lyrics.metadata.language)
+                                                 ctx.lyrics.metadata.language, progress)
         except Exception as error:  # noqa: BLE001 - only a timing aid; alignment works without it
             return {"matched_lines": 0, "error": str(error)}
         finally:

@@ -5,6 +5,7 @@ from urllib.parse import parse_qs, urlparse
 import httpx
 
 from autolyrics.application.interfaces.media import IMediaResolver
+from autolyrics.application.interfaces.progress import NO_PROGRESS, IProgress
 from autolyrics.domain.services.song_title_parser import SongTitleParser
 from autolyrics.domain.track import AudioRendition, Track
 
@@ -105,7 +106,8 @@ class ArgonFetchMediaResolver(IMediaResolver):
             return None, []
         return self._titles.parse(data.get("title") or "", data.get("author_name"))
 
-    async def download_audio(self, track: Track, directory: Path) -> Path:
+    async def download_audio(self, track: Track, directory: Path,
+                             progress: IProgress = NO_PROGRESS) -> Path:
         rendition = track.best_audio()
         url = f"{self._base_url}/api/stream/{rendition.url_type}/{rendition.key}"
         if rendition.convert_to:
@@ -119,9 +121,14 @@ class ArgonFetchMediaResolver(IMediaResolver):
             async with self._client.stream("GET", url,
                                            timeout=httpx.Timeout(30, read=300)) as response:
                 response.raise_for_status()
+                total = int(response.headers.get("content-length") or 0)
+                written = 0
                 with partial.open("wb") as fh:
                     async for chunk in response.aiter_bytes(1 << 16):
                         fh.write(chunk)
+                        written += len(chunk)
+                        progress.update(written / total if total else None,
+                                        f"{written / 1e6:.1f} MB")
 
         await self._retry.run(stream)
         partial.replace(dest)

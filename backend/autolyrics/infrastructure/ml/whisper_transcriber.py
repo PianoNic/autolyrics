@@ -9,6 +9,7 @@ import numpy as np
 import soundfile as sf
 
 from autolyrics.application.interfaces.audio import ITranscriber
+from autolyrics.application.interfaces.progress import NO_PROGRESS, IProgress
 from autolyrics.domain.lyrics import Line, Lyrics, Metadata, Word
 from autolyrics.domain.services.language_guesser import LanguageGuesser
 from autolyrics.infrastructure.media.ffmpeg import Ffmpeg
@@ -23,6 +24,7 @@ class WhisperTranscriber(ITranscriber):
 
     SAMPLE_RATE = 16000
     VOCALS_16K = "vocals16k.wav"
+    BATCH = 8  # pieces per GPU batch; also how often the progress moves
 
     def __init__(self, ffmpeg: Ffmpeg, languages: LanguageGuesser, activity: VocalActivity,
                  model_id: str = "openai/whisper-large-v3-turbo"):
@@ -33,8 +35,10 @@ class WhisperTranscriber(ITranscriber):
         self._pipeline = None
         self._lock = threading.Lock()
 
-    def transcribe(self, vocals: Path, workspace: Path, language: str | None = None) -> Lyrics:
+    def transcribe(self, vocals: Path, workspace: Path, language: str | None = None,
+                   progress: IProgress = NO_PROGRESS) -> Lyrics:
         with self._lock:
+            progress.update(None, "loading Whisper")
             samples = self._samples(vocals, workspace)
             asr = self._ensure_pipeline()
             language = language or self._detect_language(asr, samples)
@@ -47,8 +51,13 @@ class WhisperTranscriber(ITranscriber):
             pieces = self._activity.pieces(samples)
             inputs = [{"raw": samples[p.start:p.end], "sampling_rate": self.SAMPLE_RATE}
                       for p in pieces]
-            results = asr(inputs, return_timestamps=True, batch_size=8,
-                          generate_kwargs=kwargs) if inputs else []
+            results = []
+            for first in range(0, len(inputs), self.BATCH):
+                batch = inputs[first:first + self.BATCH]
+                results += asr(batch, return_timestamps=True, batch_size=self.BATCH,
+                               generate_kwargs=kwargs)
+                done = first + len(batch)
+                progress.update(done / len(inputs), f"{done} of {len(inputs)} pieces")
             chunks = []
             for piece, result in zip(pieces, results, strict=True):
                 offset = piece.start / self.SAMPLE_RATE

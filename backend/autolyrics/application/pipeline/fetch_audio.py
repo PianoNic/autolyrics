@@ -22,7 +22,8 @@ class FetchAudioHandler(ICommandHandler[FetchAudioCommand, Unit]):
         ctx = command.context
         await ctx.reporter.running(Stage.AUDIO, "Downloading audio via ArgonFetch")
         try:
-            path = await self._resolver.download_audio(ctx.track, ctx.workspace)
+            path = await self._resolver.download_audio(
+                ctx.track, ctx.workspace, ctx.reporter.progress(Stage.AUDIO, "Downloading"))
             duration = self._audio_tools.duration(path)
         except Exception as error:  # network, decoder and disk errors alike
             raise await ctx.reporter.fail(Stage.AUDIO, str(error)) from error
