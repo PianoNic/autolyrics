@@ -1,0 +1,30 @@
+[project]
+name = "autolyrics"
+version = "0.1.0"
+description = "Automatic word-synced lyrics: song link in, TTML out."
+requires-python = ">=3.12"
+license = { text = "AGPL-3.0-only" }
+dependencies = [
+    "httpx>=0.27",
+    "pydantic-settings>=2.4",
+]
+
+[project.optional-dependencies]
+# Heavy GPU stack, installed in milestone 2. The RTX 5080 (Blackwell) needs a
+# PyTorch build for CUDA 12.8 or newer.
+ml = [
+    "demucs>=4.0",
+    "whisperx>=3.3",
+]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
