@@ -29,7 +29,10 @@ class PolishLyricsHandler(ICommandHandler[PolishLyricsCommand, Unit]):
 
     def __init__(self, llm: ILlmClient, comparer: SourceComparer, applier: DecisionApplier,
                  repository: IJobRepository, separator: IVocalSeparator,
-                 transcriber: ITranscriber):
+                 transcriber: ITranscriber, witness: bool = False):
+        # Whisper as a second opinion when every source has the same text. Off by default: it
+        # costs a transcription per song and rarely changes a word.
+        self._witness = witness
         self._separator = separator
         self._transcriber = transcriber
         self._llm = llm
@@ -37,15 +40,13 @@ class PolishLyricsHandler(ICommandHandler[PolishLyricsCommand, Unit]):
         self._applier = applier
         self._repository = repository
 
-    @staticmethod
-    def _needs_witness(ctx: PipelineContext) -> bool:
+    def _needs_witness(self, ctx: PipelineContext) -> bool:
         chosen = ctx.chosen
-        return (ctx.audio is not None and chosen is not None
+        return (self._witness and ctx.audio is not None and chosen is not None
                 and chosen.source not in ("user", "file") and "transcription" not in ctx.report)
 
-    def _hear(self, ctx: PipelineContext, separating: IProgress, hearing: IProgress):
+    def _hear(self, ctx: PipelineContext, vocals, hearing: IProgress):
         try:
-            vocals = self._separator.stems(ctx.audio, ctx.workspace, separating).vocals
             return self._transcriber.transcribe(vocals, ctx.workspace,
                                                 ctx.lyrics.metadata.language, hearing)
         except Exception:  # noqa: BLE001 - a second opinion only; the clean-up works without it
@@ -72,8 +73,13 @@ class PolishLyricsHandler(ICommandHandler[PolishLyricsCommand, Unit]):
             # actually contains is the only second opinion left.
             await ctx.reporter.running(Stage.POLISH, "All sources agree; checking them against "
                                                      "what Whisper hears")
-            witness = await asyncio.to_thread(
-                self._hear, ctx, ctx.reporter.progress(Stage.POLISH, "Isolating vocals"),
+            try:
+                stems = await ctx.stems(self._separator,
+                                        ctx.reporter.progress(Stage.POLISH, "Isolating vocals"))
+            except Exception:  # noqa: BLE001 - a second opinion only
+                stems = None
+            witness = None if stems is None else await asyncio.to_thread(
+                self._hear, ctx, stems.vocals,
                 ctx.reporter.progress(Stage.POLISH, "Listening (Whisper)"))
             if witness is not None:
                 versions = [self._comparer.witness(self.WITNESS, witness)]

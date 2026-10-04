@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from mediatorx import UNIT, ICommand, ICommandHandler, Unit
 
-from autolyrics.application.interfaces.audio import IAudioTools
+from autolyrics.application.interfaces.audio import IAudioTools, IVocalSeparator
 from autolyrics.application.interfaces.media import IMediaResolver
 from autolyrics.application.pipeline.context import PipelineContext
 from autolyrics.domain.job import Stage
@@ -14,7 +14,9 @@ class FetchAudioCommand(ICommand[Unit]):
 
 
 class FetchAudioHandler(ICommandHandler[FetchAudioCommand, Unit]):
-    def __init__(self, resolver: IMediaResolver, audio_tools: IAudioTools):
+    def __init__(self, resolver: IMediaResolver, audio_tools: IAudioTools,
+                 separator: IVocalSeparator | None = None):
+        self._separator = separator
         self._resolver = resolver
         self._audio_tools = audio_tools
 
@@ -28,6 +30,9 @@ class FetchAudioHandler(ICommandHandler[FetchAudioCommand, Unit]):
         except Exception as error:  # network, decoder and disk errors alike
             raise await ctx.reporter.fail(Stage.AUDIO, str(error)) from error
         ctx.audio, ctx.duration = path, duration
+        if self._separator is not None:
+            ctx.start_separation(self._separator,
+                                 ctx.reporter.progress(Stage.ALIGN, "Isolating vocals"))
         ctx.report["audio"] = {"file": path.name, "duration": round(duration, 3)}
         await ctx.reporter.done(Stage.AUDIO,
                                 f"{duration:.1f}s, {path.stat().st_size / 1e6:.1f} MB",

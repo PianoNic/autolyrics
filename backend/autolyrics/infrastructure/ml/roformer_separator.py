@@ -27,7 +27,10 @@ class RoformerVocalSeparator(IVocalSeparator):
     def __init__(self, ffmpeg: Ffmpeg, model_dir: Path,
                  vocals_model: str = "mel_band_roformer_kim_ft2_bleedless_unwa.ckpt",
                  karaoke_model: str = "mel_band_roformer_karaoke_becruily.ckpt",
-                 dereverb_model: str = "dereverb_mel_band_roformer_less_aggressive_anvuew_sdr_18.8050.ckpt"):
+                 dereverb_model: str = "dereverb_mel_band_roformer_less_aggressive_anvuew_sdr_18.8050.ckpt",
+                 overlap: int = 8, batch_size: int = 1):
+        self._overlap = overlap  # how many times each chunk of audio is processed (quality)
+        self._batch_size = batch_size
         self._ffmpeg = ffmpeg
         self._model_dir = model_dir
         self._steps = (vocals_model, karaoke_model, dereverb_model)
@@ -65,7 +68,10 @@ class RoformerVocalSeparator(IVocalSeparator):
         from audio_separator.separator import Separator
 
         separator = Separator(output_dir=str(out), model_file_dir=str(self._model_dir),
-                              output_format="WAV", log_level=logging.WARNING)
+                              output_format="WAV", log_level=logging.WARNING,
+                              mdxc_params={"segment_size": 256, "override_model_segment_size": False,
+                                           "batch_size": self._batch_size,
+                                           "overlap": self._overlap})
         separator.load_model(model)
         files = [out / Path(f).name for f in separator.separate(str(source))]
         del separator

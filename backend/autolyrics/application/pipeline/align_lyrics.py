@@ -44,9 +44,8 @@ class AlignLyricsHandler(ICommandHandler[AlignLyricsCommand, Unit]):
         await ctx.reporter.running(Stage.ALIGN, "Isolating vocals (Demucs)")
         started = time.time()
         try:
-            stems = await asyncio.to_thread(
-                self._separator.stems, ctx.audio, ctx.workspace,
-                ctx.reporter.progress(Stage.ALIGN, "Isolating vocals"))
+            stems = await ctx.stems(self._separator,
+                                    ctx.reporter.progress(Stage.ALIGN, "Isolating vocals"))
             await ctx.reporter.running(
                 Stage.ALIGN, f"Vocals isolated in {time.time() - started:.0f}s; "
                 + ("checking the source's timing against them" if word_level else "aligning words"))

@@ -69,7 +69,9 @@ class SingingLyricsAligner(ILyricsAligner):
     TOKEN_SECONDS = 0.08  # typical length of one sung phoneme or letter
     DRIFT = 0.25  # seconds a source must drift over the song before its drift is followed
     MAX_HOLD = 4.0  # seconds a word may be held past where the aligner ended it
-    BACKGROUND_BEFORE, BACKGROUND_AFTER = 1.5, 2.5
+    # Background vocals answer or echo their line: they start after it does, so a sound before the
+    # line that resembles an ad-lib ("Warum?") cannot take it.
+    BACKGROUND_BEFORE, BACKGROUND_AFTER = 0.2, 2.5
 
     def __init__(self, ffmpeg: Ffmpeg, models: AcousticModels, solver: GlobalCtcSolver,
                  analyzer: VocalAnalyzer, repairer: TimingRepairer, offsets: OffsetEstimator,
@@ -123,9 +125,12 @@ class SingingLyricsAligner(ILyricsAligner):
             self._follow_voice(lines, events)
             syllables = self._split_syllables(lines, placed, model, language, em.frame_seconds)
             progress.update(0.75, "background vocals")
-            backing = stems.backing if stems.backing and stems.backing.exists() else stems.lead
-            self._align_background(lines, model, language,
-                                   self._emissions(model, backing, workspace))
+            # Ad-libs are often the lead singer's own voice, which the lead/backing split keeps
+            # in the lead: background words listen to the backing stem and all vocals together.
+            hearings = [heard[-1]]
+            if stems.backing and stems.backing.exists():
+                hearings.insert(0, self._emissions(model, stems.backing, workspace))
+            self._align_background(lines, model, language, self._combine(hearings))
             for line in lines:
                 self._repairer.repair(line)
                 line.begin = line.end = None

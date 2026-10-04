@@ -118,6 +118,8 @@ class SyllableTimer:
             if starts is not None:
                 pieces = candidate
                 break
+        if starts is None and phonemes:
+            pieces, starts = self._spelled(word.text, tokens)
         if starts is None:
             return [word]
         times = [word.begin] + [span.tokens[k].begin * frame_seconds for k in starts[1:]]
@@ -127,6 +129,33 @@ class SyllableTimer:
         return [Word(text=piece, begin=round(a, 3), end=round(b, 3),
                      confidence=word.confidence, flags=list(word.flags))
                 for piece, a, b in zip(pieces, times, times[1:], strict=False)]
+
+    def _spelled(self, text: str, tokens: list[int]) -> tuple[list[str], list[int] | None]:
+        """Names and acronyms in capitals ("SSIO" sung "Es-sio") have no written syllables to
+        match: split them by their sung syllables, sharing the letters out in proportion."""
+        core = text.rstrip()
+        trailing = text[len(core):]
+        letters = [i for i, ch in enumerate(core) if ch.isalpha()]
+        if not core.isupper() or len(letters) < 3 or any(ch.isspace() for ch in core):
+            return [text], None
+        vowels = [i for i, t in enumerate(tokens) if t in self._vowel_ids]
+        count = min(len(vowels), len(letters))
+        starts = self._phoneme_starts(tokens, count) if count >= 2 else None
+        if starts is None:
+            return [text], None
+        # Letters per piece in proportion to the sung syllable's phonemes, at least one each.
+        bounds = [*starts, len(tokens)]
+        sizes = [b - a for a, b in pairwise(bounds)]
+        cuts, used = [], 0
+        for k, size in enumerate(sizes[:-1]):
+            left = len(sizes) - k - 1  # pieces still to come, one letter each at least
+            share = round(len(letters) * size / len(tokens))
+            used = min(max(used + 1, used + share), len(letters) - left)
+            cuts.append(letters[used] if used < len(letters) else len(core))
+        edges = [0, *cuts, len(core)]
+        pieces = [core[a:b] for a, b in pairwise(edges)]
+        pieces[-1] += trailing
+        return pieces, starts
 
     def _phoneme_starts(self, tokens: list[int], count: int) -> list[int] | None:
         vowels = [i for i, t in enumerate(tokens) if t in self._vowel_ids]

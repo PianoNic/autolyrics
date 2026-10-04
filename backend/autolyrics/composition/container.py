@@ -141,7 +141,9 @@ class Container:
             LrclibProvider(self.http, self.lrc),
         ]
         self.model_files = ModelFiles(s.models_dir)
-        self.separator = (RoformerVocalSeparator(self.ffmpeg, s.models_dir / "separator")
+        self.separator = (RoformerVocalSeparator(self.ffmpeg, s.models_dir / "separator",
+                                                 overlap=s.separation_overlap,
+                                                 batch_size=s.separation_batch)
                           if s.separator == "roformer"
                           else DemucsVocalSeparator(self.ffmpeg, s.demucs_model))
         self.japanese = JapaneseText()
@@ -178,7 +180,7 @@ class Container:
         self.handle(ResolveTrackCommand, ResolveTrackHandler,
                     lambda: ResolveTrackHandler(self.media))
         self.handle(FetchAudioCommand, FetchAudioHandler,
-                    lambda: FetchAudioHandler(self.media, self.ffmpeg))
+                    lambda: FetchAudioHandler(self.media, self.ffmpeg, self.separator))
         self.handle(FindLyricsCommand, FindLyricsHandler,
                     lambda: FindLyricsHandler(self.providers, self.formats, self.selector, repo,
                                               self.tidier))
@@ -186,7 +188,8 @@ class Container:
                     lambda: TranscribeLyricsHandler(self.separator, self.transcriber, self.tidier))
         self.handle(PolishLyricsCommand, PolishLyricsHandler,
                     lambda: PolishLyricsHandler(self.llm, self.comparer, self.applier, repo,
-                                                self.separator, self.transcriber))
+                                                self.separator, self.transcriber,
+                                                witness=self.settings.whisper_witness))
         self.handle(AlignLyricsCommand, AlignLyricsHandler,
                     lambda: AlignLyricsHandler(self.separator, self.aligner, self.transcriber,
                                                LineAnchorer()))

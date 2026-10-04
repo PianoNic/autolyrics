@@ -54,5 +54,14 @@ class Settings(BaseSettings):
     demucs_model: str = Field("htdemucs_ft", validation_alias="AUTOLYRICS_DEMUCS_MODEL")
 
     # Whisper model for songs no lyrics source has (transformers model id).
+    # Whisper as a second opinion on the text when every lyrics source agrees (slow; rarely
+    # changes a word).
+    whisper_witness: bool = Field(False, validation_alias="AUTOLYRICS_WHISPER_WITNESS")
+
+    # Separation quality vs speed: each chunk is processed `overlap` times. 2 is 3-4x faster than
+    # the models' default 8 and measured within a few ms on the benchmark.
+    separation_overlap: int = Field(2, validation_alias="AUTOLYRICS_SEPARATION_OVERLAP")
+    separation_batch: int = Field(4, validation_alias="AUTOLYRICS_SEPARATION_BATCH")
+
     whisper_model: str = Field("openai/whisper-large-v3-turbo",
                                validation_alias="AUTOLYRICS_WHISPER_MODEL")
