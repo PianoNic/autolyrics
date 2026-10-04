@@ -5,7 +5,7 @@ import { render } from "@/test/render";
 describe("AppHeader", () => {
   it("renders the autolyrics logo and brand text", async () => {
     const screen = await render(<AppHeader onSettingsOpen={() => {}} onHelpOpen={() => {}} />);
-    expect(screen.container.querySelector('img[src="/logo.svg"]')).not.toBeNull();
+    expect(screen.container.querySelector('img[src="/logo.svg?v=2"]')).not.toBeNull();
     expect(screen.container.textContent).toContain("autolyrics");
   });
 
