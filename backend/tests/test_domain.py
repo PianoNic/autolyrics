@@ -294,3 +294,47 @@ class TestDecisionApplier:
         assert spread[0].begin == 4.0
         assert spread[-1].end == pytest.approx(5.0)
         assert "interpolated" in spread[1].flags
+
+
+class TestLineAnchorer:
+    def test_lines_get_times_where_the_transcription_heard_them(self, plain):
+        from autolyrics.domain.services.line_anchorer import LineAnchorer
+
+        ours = plain.parse("Yo, link up to the master, we live!\nWe here for a reason right now\n"
+                           "Higher\nHands go higher\nLet's go")
+        heard = Lyrics(lines=[
+            Line(words=Word.tokenize("Yo, big up to the monster, we live"), begin=1.0, end=3.0),
+            Line(words=Word.tokenize("We in for a reason right now"), begin=4.8, end=6.5),
+            Line(words=Word.tokenize("thank you"), begin=50.0, end=51.0),
+            Line(words=Word.tokenize("hands go higher"), begin=110.0, end=112.0),
+            Line(words=Word.tokenize("let's go"), begin=118.0, end=119.0),
+        ])
+        matched = LineAnchorer().anchor(ours, heard, duration=152.0)
+        begins = [round(line.begin, 1) for line in ours.lines]
+        assert matched == 4
+        assert begins[0] == pytest.approx(1.0, abs=0.5)
+        assert begins[1] == pytest.approx(4.8, abs=1.0)
+        assert 6.5 < begins[2] < 110.0  # "Higher" was not heard alone: placed between neighbours
+        assert begins[3] == pytest.approx(110.0, abs=0.5)
+        assert begins[4] == pytest.approx(118.0, abs=0.5)
+        assert all(a.end <= b.begin + 1e-9 for a, b in zip(ours.lines, ours.lines[1:], strict=False))
+
+    def test_nothing_heard_leaves_lines_untimed(self, plain):
+        from autolyrics.domain.services.line_anchorer import LineAnchorer
+
+        ours = plain.parse("one two three")
+        assert LineAnchorer().anchor(ours, Lyrics(lines=[]), 60.0) == 0
+        assert ours.lines[0].begin is None
+
+
+class TestLyricsTidier:
+    def test_stray_punctuation_joins_its_word_and_background_is_capitalised(self, plain):
+        from autolyrics.domain.services.lyrics_tidier import LyricsTidier
+
+        lyrics = plain.parse("Ja, Bruder, was geht? , ich habe jetzt gleich ein Date (was geht?)\n"
+                             "Bro , bleib locker (ciao, ciao)\nNormal line (Already Capital)")
+        assert LyricsTidier().tidy(lyrics) == 4
+        assert lyrics.lines[0].text == "Ja, Bruder, was geht?, ich habe jetzt gleich ein Date"
+        assert lyrics.lines[0].background_text == "Was geht?"
+        assert lyrics.lines[1].display == "Bro, bleib locker (Ciao, ciao)"
+        assert lyrics.lines[2].display == "Normal line (Already Capital)"

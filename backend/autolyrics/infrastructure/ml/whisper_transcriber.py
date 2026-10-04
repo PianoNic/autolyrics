@@ -12,6 +12,7 @@ from autolyrics.application.interfaces.audio import ITranscriber
 from autolyrics.domain.lyrics import Line, Lyrics, Metadata, Word
 from autolyrics.domain.services.language_guesser import LanguageGuesser
 from autolyrics.infrastructure.media.ffmpeg import Ffmpeg
+from autolyrics.infrastructure.ml.vocal_activity import VocalActivity
 
 log = logging.getLogger(__name__)
 
@@ -23,9 +24,10 @@ class WhisperTranscriber(ITranscriber):
     SAMPLE_RATE = 16000
     VOCALS_16K = "vocals16k.wav"
 
-    def __init__(self, ffmpeg: Ffmpeg, languages: LanguageGuesser,
+    def __init__(self, ffmpeg: Ffmpeg, languages: LanguageGuesser, activity: VocalActivity,
                  model_id: str = "openai/whisper-large-v3-turbo"):
         self._ffmpeg = ffmpeg
+        self._activity = activity
         self._languages = languages
         self._model_id = model_id
         self._pipeline = None
@@ -39,11 +41,25 @@ class WhisperTranscriber(ITranscriber):
             kwargs = {"task": "transcribe"}
             if language:
                 kwargs["language"] = language
-            # Whisper's own sequential long-form decoding (no chunk_length_s): it returns one
-            # segment per phrase, which become the lines. Chunked decoding merges them.
-            result = asr({"raw": samples, "sampling_rate": self.SAMPLE_RATE},
-                         return_timestamps=True, generate_kwargs=kwargs)
-            lyrics = self._to_lyrics(result.get("chunks") or [], len(samples) / self.SAMPLE_RATE)
+            # Whisper hears 30 s at a time. Each sung stretch of the isolated vocals is cut into a
+            # piece of at most that and transcribed on its own, so nothing is skipped the way
+            # long-form decoding can skip when it loses its place.
+            pieces = self._activity.pieces(samples)
+            inputs = [{"raw": samples[p.start:p.end], "sampling_rate": self.SAMPLE_RATE}
+                      for p in pieces]
+            results = asr(inputs, return_timestamps=True, batch_size=8,
+                          generate_kwargs=kwargs) if inputs else []
+            chunks = []
+            for piece, result in zip(pieces, results, strict=True):
+                offset = piece.start / self.SAMPLE_RATE
+                for chunk in result.get("chunks") or []:
+                    begin, end = chunk.get("timestamp") or (None, None)
+                    chunks.append({
+                        "text": chunk.get("text"),
+                        "timestamp": (None if begin is None else begin + offset,
+                                      None if end is None else end + offset),
+                    })
+            lyrics = self._to_lyrics(chunks, len(samples) / self.SAMPLE_RATE)
             lyrics.metadata.language = language or self._languages.guess(lyrics)
             return lyrics
 

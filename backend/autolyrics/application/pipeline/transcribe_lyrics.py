@@ -7,6 +7,7 @@ from mediatorx import UNIT, ICommand, ICommandHandler, Unit
 from autolyrics.application.interfaces.audio import ITranscriber, IVocalSeparator
 from autolyrics.application.pipeline.context import PipelineContext
 from autolyrics.domain.job import Stage
+from autolyrics.domain.services.lyrics_tidier import LyricsTidier
 
 
 @dataclass
@@ -19,7 +20,9 @@ class TranscribeLyricsHandler(ICommandHandler[TranscribeLyricsCommand, Unit]):
     hears the isolated vocals. The result is a rough draft; every word stays flagged for review
     and lyrics platforms that refuse AI transcriptions should get a corrected version."""
 
-    def __init__(self, separator: IVocalSeparator, transcriber: ITranscriber):
+    def __init__(self, separator: IVocalSeparator, transcriber: ITranscriber,
+                 tidier: LyricsTidier):
+        self._tidier = tidier
         self._separator = separator
         self._transcriber = transcriber
 
@@ -40,6 +43,7 @@ class TranscribeLyricsHandler(ICommandHandler[TranscribeLyricsCommand, Unit]):
         if not lyrics.lines:
             raise await ctx.reporter.fail(Stage.LYRICS, "Whisper heard no vocals in this song")
 
+        self._tidier.tidy(lyrics)
         lyrics.metadata.title = ctx.track.title
         lyrics.metadata.artists = list(ctx.track.artists)
         lyrics.metadata.duration = ctx.duration

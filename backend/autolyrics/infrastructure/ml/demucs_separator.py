@@ -1,4 +1,5 @@
 import gc
+import random
 from pathlib import Path
 
 import numpy as np
@@ -12,6 +13,7 @@ class DemucsVocalSeparator(IVocalSeparator):
     """Vocal isolation with Demucs, so the aligner hears the voice and not the beat."""
 
     VOCALS_FILE = "vocals.wav"
+    SEED = 1234
 
     def __init__(self, ffmpeg: Ffmpeg, model_name: str = "htdemucs_ft"):
         self._ffmpeg = ffmpeg
@@ -37,6 +39,10 @@ class DemucsVocalSeparator(IVocalSeparator):
         ref = wav.mean(0)
         mean, std = ref.mean(), ref.std() + 1e-8
         device = "cuda" if torch.cuda.is_available() else "cpu"
+        # Demucs shifts the input by a random amount; a fixed seed makes the same song always give
+        # the same vocals, and so the same timing.
+        random.seed(self.SEED)
+        torch.manual_seed(self.SEED)
         with torch.no_grad():
             sources = apply_model(model, ((wav - mean) / std)[None], device=device, shifts=1,
                                   split=True, overlap=0.25, progress=False)[0]

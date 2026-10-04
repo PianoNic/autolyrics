@@ -10,7 +10,9 @@ from autolyrics.application.interfaces.lyrics import ILyricsFormats, ILyricsProv
 from autolyrics.application.pipeline.context import PipelineContext
 from autolyrics.domain.candidate import LyricsCandidate, LyricsQuery
 from autolyrics.domain.job import Stage
+from autolyrics.domain.lyrics import SyncType
 from autolyrics.domain.services.candidate_selector import CandidateSelector
+from autolyrics.domain.services.lyrics_tidier import LyricsTidier
 
 log = logging.getLogger(__name__)
 
@@ -24,8 +26,11 @@ class FindLyricsHandler(ICommandHandler[FindLyricsCommand, Unit]):
     """Searches every provider, parses and judges what they return, and picks the lyrics to
     start from: the best usable candidate, without its timing when that belongs to another cut."""
 
+    USER_SOURCES = ("user", "file")
+
     def __init__(self, providers: list[ILyricsProvider], formats: ILyricsFormats,
-                 selector: CandidateSelector, repository: IJobRepository):
+                 selector: CandidateSelector, repository: IJobRepository, tidier: LyricsTidier):
+        self._tidier = tidier
         self._providers = providers
         self._formats = formats
         self._selector = selector
@@ -54,10 +59,16 @@ class FindLyricsHandler(ICommandHandler[FindLyricsCommand, Unit]):
             await ctx.reporter.running(Stage.LYRICS, f"none usable of {len(candidates)} found",
                                        candidates=ctx.report["candidates"])
         ctx.lyrics = self._starting_lyrics(ctx)
+        # Text the user gave us (pasted, or a file) is theirs to style; only source text is tidied.
+        if ctx.lyrics is not None and ctx.chosen.source not in self.USER_SOURCES:
+            ctx.report["tidied"] = self._tidier.tidy(ctx.lyrics)
         return UNIT
 
     async def _collect(self, ctx: PipelineContext) -> list[LyricsCandidate]:
         options = ctx.job.options
+        if options.lyrics_text and options.lyrics_text.strip():
+            return [LyricsCandidate("user", "Your lyrics", "plain", options.lyrics_text,
+                                    SyncType.UNSYNCED)]
         if options.lyrics_file:
             return [self._formats.candidate_from_file(Path(options.lyrics_file))]
         track = ctx.track

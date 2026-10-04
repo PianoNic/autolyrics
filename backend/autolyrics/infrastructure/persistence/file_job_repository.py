@@ -36,6 +36,8 @@ class FileJobRepository(IJobRepository):
         self._root = root
         self._jobs: dict[str, Job] = {}
         self._mtimes: dict[str, float] = {}
+        # Jobs this process is running: their in-memory state is the truth, not the file.
+        self._running_here: set[str] = set()
         self._lock = threading.RLock()
 
     def create(self, options: JobOptions, job_id: str | None = None) -> Job:
@@ -75,6 +77,10 @@ class FileJobRepository(IJobRepository):
     def save(self, job: Job) -> None:
         with self._lock:
             self._jobs[job.id] = job
+            if job.status.active:
+                self._running_here.add(job.id)
+            else:
+                self._running_here.discard(job.id)
             path = self.workspace(job.id) / self.JOB_FILE
             self._write(path, job.model_dump_json(indent=2))
             self._mtimes[job.id] = path.stat().st_mtime
@@ -146,16 +152,24 @@ class FileJobRepository(IJobRepository):
         except ValueError:
             return None
         previous = self._jobs.get(job.id)
-        if job.status.active and previous is None:
+        if job.status.active and previous is None and not self._is_fresh(path):
             # Nothing runs across restarts; a job caught mid-run did not finish.
             job.fail("interrupted")
         self._jobs[job.id] = job
         self._mtimes[job.id] = path.stat().st_mtime
         return job
 
+    @staticmethod
+    def _is_fresh(path: Path, seconds: float = 120.0) -> bool:
+        """Written moments ago: another process is running that job right now."""
+        try:
+            return time.time() - path.stat().st_mtime < seconds
+        except OSError:
+            return False
+
     def _changed_on_disk(self, job: Job) -> bool:
         """A job this process is not running whose file someone else rewrote."""
-        if job.status.active:
+        if job.id in self._running_here:
             return False
         try:
             mtime = (self.workspace(job.id) / self.JOB_FILE).stat().st_mtime

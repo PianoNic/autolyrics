@@ -46,6 +46,8 @@ class JobOptions(BaseModel):
     album: str | None = None
     # Use this lyrics file instead of searching (the user's own TTML, LRC or text).
     lyrics_file: str | None = None
+    # Lyrics pasted by the user (e.g. copied from a streaming app): used as they are, then timed.
+    lyrics_text: str | None = None
     skip_llm: bool = False
     # Ignore the lyrics sources and transcribe the vocals (normally only the fallback).
     transcribe: bool = False

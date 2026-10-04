@@ -69,6 +69,11 @@ class TestFileJobRepository:
         job = repository.create(JobOptions(url="https://x"), job_id="song")
         job.start()
         repository.save(job)
+        import os
+        import time
+
+        long_ago = time.time() - 3600  # the process that ran it is gone
+        os.utime(tmp_path / "song" / "job.json", (long_ago, long_ago))
         stale = FileJobRepository(tmp_path).get("song")
         assert stale.status == JobStatus.FAILED
         assert stale.error == "interrupted"
@@ -134,3 +139,44 @@ class TestRepositoryFreshness:
         later = time.time() + 5
         os.utime(path, (later, later))
         assert repository.get("song") is job
+
+
+class TestVocalActivity:
+    def test_pieces_follow_singing_and_never_exceed_the_limit(self):
+        import numpy as np
+
+        from autolyrics.infrastructure.ml.vocal_activity import VocalActivity
+
+        rate = 16000
+        rng = np.random.default_rng(0)
+        silence = np.zeros(rate * 5)
+        sung = lambda seconds: rng.normal(0, 0.3, int(rate * seconds))
+        # 5 s silence, 4 s singing, 5 s silence, 70 s continuous singing, 3 s silence
+        audio = np.concatenate([silence, sung(4), silence, sung(70), np.zeros(rate * 3)])
+        pieces = VocalActivity(sample_rate=rate).pieces(audio)
+        starts = [p.start / rate for p in pieces]
+        assert 4.5 < starts[0] < 5.0
+        assert all((p.end - p.start) / rate <= 28.0 + 1e-6 for p in pieces)
+        covered = sum(p.end - p.start for p in pieces) / rate
+        assert covered >= 74  # every sung second is in some piece
+        assert VocalActivity(sample_rate=rate).pieces(np.zeros(rate * 10)) == []
+
+
+class TestRepositoryAcrossProcesses:
+    def test_a_job_another_process_runs_is_followed_to_the_end(self, tmp_path):
+        import os
+        import time
+
+        server = FileJobRepository(tmp_path)
+        cli = FileJobRepository(tmp_path)
+        job = cli.create(JobOptions(url="https://x"), job_id="song")
+        job.start()
+        cli.save(job)
+        assert server.get("song").status == JobStatus.RUNNING  # fresh file: not "interrupted"
+
+        job.finish()
+        cli.save(job)
+        path = tmp_path / "song" / "job.json"
+        later = time.time() + 5
+        os.utime(path, (later, later))
+        assert server.get("song").status == JobStatus.DONE

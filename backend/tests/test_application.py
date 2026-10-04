@@ -167,3 +167,16 @@ class TestEditing:
             CreateJobCommand(JobOptions(url="https://x"), enqueue=False)))
         with pytest.raises(JobStateError):
             harness.run(harness.mediator.send(RealignLineCommand(created.id, 0)))
+
+
+class TestPastedLyrics:
+    def test_pasted_lyrics_are_used_as_they_are_and_timed(self, harness):
+        text = "Yo, link up to the master, we live!\nWe here for a reason right now (right now)"
+        result = harness.run(harness.process(lyrics_text=text))
+        lyrics = harness.run(harness.mediator.send(GetLyricsQuery(result.id)))
+        assert [line.text for line in lyrics.lines] == ["Yo, link up to the master, we live!",
+                                                        "We here for a reason right now"]
+        assert lyrics.lines[1].background_text == "right now"
+        assert all(w.timed for w in lyrics.all_words)
+        report = harness.run(harness.mediator.send(GetJobQuery(result.id))).report
+        assert report["chosen"]["source"] == "user"

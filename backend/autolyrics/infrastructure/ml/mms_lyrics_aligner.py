@@ -209,10 +209,11 @@ class MmsLyricsAligner(ILyricsAligner):
                 if (line.words and not run.align_words(line.words, start, end)
                         and not run.align_words(line.words, start, end + self.WIDER)):
                     failed += 1
-                if self._contradicts_source(line, offset):
+                trusted = self._trusted_offset(line, offset, line_offset)
+                if trusted is not None:
                     # Unsure and seconds away from where the source says the line is sung: the
                     # aligner has latched onto a repeat, an echo or words it cannot read.
-                    self._time_from_source(line, offset, previous_end, run.duration)
+                    self._time_from_source(line, trusted, previous_end, run.duration)
                     source_timed += 1
                 ends = [w.end for w in line.words if w.timed]
                 if ends:
@@ -239,13 +240,23 @@ class MmsLyricsAligner(ILyricsAligner):
             "source_timed_lines": source_timed,
         }
 
-    def _contradicts_source(self, line: Line, offset: float) -> bool:
+    def _trusted_offset(self, line: Line, local: float, song: float) -> float | None:
+        """The offset to place an unsure line by when its alignment contradicts the source, or
+        None when the alignment stands. The local offset can itself be pulled off by a few
+        confident but wrong words (a repeated chorus), so when it disagrees with the song-wide
+        offset as well, the song-wide one is trusted."""
         timed = [w for w in line.words if w.timed]
         if not timed or line.begin is None:
-            return False
-        sure = mean(w.confidence or 0.0 for w in timed)
-        expected = line.begin + offset
-        return sure < self.UNSURE_LINE and abs(timed[0].begin - expected) > self.SOURCE_TRUST
+            return None
+        if mean(w.confidence or 0.0 for w in timed) >= self.UNSURE_LINE:
+            return None
+        found = timed[0].begin
+        if abs(found - (line.begin + local)) > self.SOURCE_TRUST:
+            return local
+        if (abs(local - song) > self.SOURCE_TRUST
+                and abs(found - (line.begin + song)) > self.SOURCE_TRUST):
+            return song
+        return None
 
     def _time_from_source(self, line: Line, offset: float, previous_end: float,
                           duration: float) -> None:

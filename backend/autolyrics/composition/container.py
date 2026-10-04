@@ -57,6 +57,8 @@ from autolyrics.domain.services.background_splitter import BackgroundSplitter
 from autolyrics.domain.services.candidate_selector import CandidateSelector
 from autolyrics.domain.services.decision_applier import DecisionApplier
 from autolyrics.domain.services.language_guesser import LanguageGuesser
+from autolyrics.domain.services.line_anchorer import LineAnchorer
+from autolyrics.domain.services.lyrics_tidier import LyricsTidier
 from autolyrics.domain.services.lyrics_validator import LyricsValidator
 from autolyrics.domain.services.offset_estimator import OffsetEstimator
 from autolyrics.domain.services.song_title_parser import SongTitleParser
@@ -75,6 +77,7 @@ from autolyrics.infrastructure.media.ffmpeg import Ffmpeg
 from autolyrics.infrastructure.ml.demucs_separator import DemucsVocalSeparator
 from autolyrics.infrastructure.ml.japanese_text import JapaneseText, WordSegmenter
 from autolyrics.infrastructure.ml.mms_lyrics_aligner import MmsLyricsAligner
+from autolyrics.infrastructure.ml.vocal_activity import VocalActivity
 from autolyrics.infrastructure.ml.whisper_transcriber import WhisperTranscriber
 from autolyrics.infrastructure.persistence.file_job_repository import FileJobRepository
 from autolyrics.infrastructure.providers.binimum import BinimumProvider
@@ -102,6 +105,7 @@ class Container:
         self.validator = LyricsValidator()
         self.repairer = TimingRepairer()
         self.offsets = OffsetEstimator()
+        self.tidier = LyricsTidier()
 
         # infrastructure
         self.ttml = TtmlFormat(self.splitter)
@@ -122,7 +126,8 @@ class Container:
         self.japanese = JapaneseText()
         self.aligner = MmsLyricsAligner(self.ffmpeg, self.repairer, self.offsets, self.languages,
                                         self.japanese, WordSegmenter(self.japanese))
-        self.transcriber = WhisperTranscriber(self.ffmpeg, self.languages, s.whisper_model)
+        self.transcriber = WhisperTranscriber(self.ffmpeg, self.languages, VocalActivity(),
+                                              s.whisper_model)
         self.llm = OpenAiCompatibleLlmClient(self.http, s.llm_base_url, s.llm_api_key, s.llm_model)
         self.repository = FileJobRepository(s.jobs_dir)
         self.broadcaster = InMemoryJobEventBroadcaster()
@@ -153,13 +158,15 @@ class Container:
         self.handle(FetchAudioCommand, FetchAudioHandler,
                     lambda: FetchAudioHandler(self.media, self.ffmpeg))
         self.handle(FindLyricsCommand, FindLyricsHandler,
-                    lambda: FindLyricsHandler(self.providers, self.formats, self.selector, repo))
+                    lambda: FindLyricsHandler(self.providers, self.formats, self.selector, repo,
+                                              self.tidier))
         self.handle(TranscribeLyricsCommand, TranscribeLyricsHandler,
-                    lambda: TranscribeLyricsHandler(self.separator, self.transcriber))
+                    lambda: TranscribeLyricsHandler(self.separator, self.transcriber, self.tidier))
         self.handle(PolishLyricsCommand, PolishLyricsHandler,
                     lambda: PolishLyricsHandler(self.llm, self.comparer, self.applier, repo))
         self.handle(AlignLyricsCommand, AlignLyricsHandler,
-                    lambda: AlignLyricsHandler(self.separator, self.aligner))
+                    lambda: AlignLyricsHandler(self.separator, self.aligner, self.transcriber,
+                                               LineAnchorer()))
         self.handle(FinalizeLyricsCommand, FinalizeLyricsHandler,
                     lambda: FinalizeLyricsHandler(self.publisher))
 
