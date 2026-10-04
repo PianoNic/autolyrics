@@ -10,11 +10,17 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Heavy GPU stack, installed in milestone 2. The RTX 5080 (Blackwell) needs a
-# PyTorch build for CUDA 12.8 or newer.
+# Vocal separation and forced alignment. Install PyTorch first from the CUDA index so pip
+# does not pull a CPU build (Blackwell GPUs such as the RTX 50xx need CUDA 12.8 or newer):
+#   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu128
 ml = [
-    "demucs>=4.0",
-    "whisperx>=3.3",
+    "torch>=2.8",
+    "torchaudio>=2.8",
+    "demucs>=4.1",
+    "soundfile>=0.12",
+    "num2words>=0.5",
+    "unidecode>=1.3",
+    "numpy>=1.26",
 ]
 dev = [
     "pytest>=8",

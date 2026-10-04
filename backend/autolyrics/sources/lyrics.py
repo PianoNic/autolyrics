@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 
 import httpx
 
+from autolyrics.config import settings
 from autolyrics.formats.lrc import detect_lrc_sync_type, parse_lrc
 from autolyrics.formats.plain import parse_plain
 from autolyrics.formats.qrc import detect_qrc_sync_type, parse_qrc
@@ -45,6 +46,8 @@ class Candidate:
     source_id: str | None = None
     lyrics: Lyrics | None = None
     rejected: str | None = None
+    # The text is right but the timing belongs to another cut of the song (album vs. video).
+    text_only: bool = False
     notes: list[str] = field(default_factory=list)
 
     def parse(self, audio_duration: float | None) -> Lyrics:
@@ -60,6 +63,8 @@ class Candidate:
 
     @property
     def sync(self) -> SyncType:
+        if self.text_only:
+            return SyncType.UNSYNCED
         return self.lyrics.sync_type if self.lyrics else self.declared_sync
 
     def summary(self) -> dict:
@@ -67,6 +72,7 @@ class Candidate:
             "source": self.source, "label": self.label, "format": self.format,
             "sync": self.sync.value, "track": self.track, "artist": self.artist,
             "duration": self.duration, "id": self.source_id, "rejected": self.rejected,
+            "text_only": self.text_only,
             "lines": len(self.lyrics.lines) if self.lyrics else None, "notes": self.notes,
         }
 
@@ -74,13 +80,19 @@ class Candidate:
 # -- Providers ----------------------------------------------------------------
 
 
-async def _get_json(client: httpx.AsyncClient, url: str, params: dict, name: str):
+async def _get_json(client: httpx.AsyncClient, url: str, params: dict, name: str,
+                    headers: dict | None = None):
     try:
-        response = await client.get(url, params=params, timeout=20)
+        response = await client.get(url, params=params, headers=headers, timeout=20)
     except httpx.HTTPError as error:
         log.warning("[%s] request failed: %s", name, error)
         return None
     if response.status_code == 404:
+        return None
+    if response.status_code == 401:
+        # lyrics-api.boidu.dev serves cached songs freely but wants an API key for new ones.
+        log.warning("[%s] needs an API key for songs it has not cached (AUTOLYRICS_BOIDU_API_KEY)",
+                    name)
         return None
     if not response.is_success:
         log.warning("[%s] returned %s", name, response.status_code)
@@ -93,13 +105,18 @@ async def _get_json(client: httpx.AsyncClient, url: str, params: dict, name: str
         return None
 
 
+def _boidu_headers() -> dict | None:
+    return {"X-API-Key": settings.boidu_api_key} if settings.boidu_api_key else None
+
+
 async def search_boidu(q: Query, client: httpx.AsyncClient) -> list[Candidate]:
     if not (q.track and q.artist and q.duration and q.video_id):
         return []
     params = {"s": q.track, "a": q.artist, "d": round(q.duration), "videoId": q.video_id}
     if q.album:
         params["al"] = q.album
-    body = await _get_json(client, "https://lyrics-api.boidu.dev/getLyrics", params, "boidu")
+    body = await _get_json(client, "https://lyrics-api.boidu.dev/getLyrics", params, "boidu",
+                           _boidu_headers())
     ttml = (body or {}).get("ttml") if isinstance(body, dict) else None
     if not ttml:
         return []
@@ -117,7 +134,8 @@ async def search_portato(q: Query, client: httpx.AsyncClient) -> list[Candidate]
         params["duration"] = round(q.duration)
     if q.video_id:
         params["videoId"] = q.video_id
-    body = await _get_json(client, "https://lyrics-api.boidu.dev/qq/getLyrics", params, "portato")
+    body = await _get_json(client, "https://lyrics-api.boidu.dev/qq/getLyrics", params, "portato",
+                           _boidu_headers())
     qrc = (body or {}).get("lyrics") if isinstance(body, dict) else None
     if not qrc:
         return []
@@ -204,10 +222,8 @@ MIN_WORDS = 12
 
 
 def validate(c: Candidate, audio_duration: float | None, tolerance: float) -> None:
-    """Parse the candidate and set `rejected` when it cannot be this recording's lyrics."""
-    if audio_duration and c.duration and abs(c.duration - audio_duration) > tolerance:
-        c.rejected = f"length {c.duration:.0f}s vs audio {audio_duration:.0f}s"
-        return
+    """Parse the candidate, then reject it or demote it to text-only when its timing cannot
+    belong to this recording."""
     try:
         lyrics = c.parse(audio_duration)
     except Exception as error:  # noqa: BLE001 - any malformed document from an untrusted source
@@ -217,11 +233,15 @@ def validate(c: Candidate, audio_duration: float | None, tolerance: float) -> No
     if words < MIN_WORDS:
         c.rejected = f"only {words} words"
         return
-    if audio_duration and lyrics.sync_type != SyncType.UNSYNCED:
+    if audio_duration and c.duration and abs(c.duration - audio_duration) > tolerance:
+        c.text_only = True
+        c.notes.append(f"length {c.duration:.0f}s vs audio {audio_duration:.0f}s: text only")
+    elif audio_duration and lyrics.sync_type != SyncType.UNSYNCED:
         ends = [b[1] for line in lyrics.lines if (b := line.bounds())]
         if ends and max(ends) > audio_duration + tolerance:
-            c.rejected = f"timed past the end of the audio ({max(ends):.0f}s > {audio_duration:.0f}s)"
-            return
+            c.text_only = True
+            c.notes.append(f"timed past the audio end ({max(ends):.0f}s > "
+                           f"{audio_duration:.0f}s): text only")
     if c.declared_sync.is_word_level and not lyrics.sync_type.is_word_level:
         c.notes.append(f"declared {c.declared_sync.value} but parsed as {lyrics.sync_type.value}")
 
@@ -232,6 +252,8 @@ def rank(candidates: list[Candidate], audio_duration: float | None) -> list[Cand
 
     def key(c: Candidate):
         closeness = abs((c.duration or audio_duration or 0) - (audio_duration or 0))
-        return (-c.sync.rank, SOURCE_PREFERENCE.get(c.source, 9), closeness)
+        # Among text-only candidates, a word-synced source still has the most careful text.
+        declared = c.lyrics.sync_type.rank if c.lyrics else 0
+        return (-c.sync.rank, -declared, SOURCE_PREFERENCE.get(c.source, 9), closeness)
 
     return sorted(usable, key=key)

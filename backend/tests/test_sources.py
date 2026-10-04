@@ -37,6 +37,10 @@ def test_youtube_video_id(url, expected):
         ("Never Gonna Give You Up", "Rick Astley - Topic", ("Never Gonna Give You Up", ["Rick Astley"])),
         ("Ufo361 & Gunna - Song [Official Video]", "Ufo361", ("Song", ["Ufo361", "Gunna"])),
         ("Artist - Track | A COLORS SHOW", "COLORS", ("Track", ["Artist"])),
+        ("Apache 207 - ROLLER prod. by Lucry & Suena (Official Video)", "Apache 207",
+         ("ROLLER", ["Apache 207"])),
+        ('Ufo361 - "Emotions" (Rich Rich - OUT NOW!)', "Stay High", ("Emotions", ["Ufo361"])),
+        ("Song (feat. Someone) [Official Audio]", "Artist - Topic", ("Song", ["Artist"])),
     ],
 )
 def test_clean_youtube_title(title, author, expected):
@@ -58,20 +62,33 @@ def _candidate(source, fmt, name, duration=None):
     return Candidate(source, source, fmt, content, SyncType.LINE, duration=duration)
 
 
-def test_validate_rejects_wrong_length_and_tiny_lyrics():
+def test_validate_demotes_other_cuts_to_text_only_and_rejects_tiny_lyrics():
     long_version = _candidate("lrclib", "lrc", "rick.lrc", duration=346)
     validate(long_version, 213.6, 3.0)
-    assert long_version.rejected.startswith("length")
+    assert long_version.rejected is None
+    assert long_version.text_only
+    assert long_version.sync == SyncType.UNSYNCED
 
     junk = Candidate("lrclib", "LRCLIB", "lrc", "[00:00.00]probe2", SyncType.LINE, duration=213)
     validate(junk, 213.6, 3.0)
     assert junk.rejected == "only 1 words"
 
 
-def test_validate_rejects_timing_past_audio_end():
+def test_validate_timing_past_audio_end_is_text_only():
     c = _candidate("boidu", "ttml", "rick.ttml")
     validate(c, 120.0, 3.0)
-    assert "past the end" in c.rejected
+    assert c.text_only
+    assert "past the audio end" in c.notes[0]
+
+
+def test_rank_puts_text_only_after_timed_but_prefers_careful_text():
+    plain_lrc = _candidate("lrclib", "lrc", "rick.lrc", duration=212)
+    other_cut = _candidate("boidu", "ttml", "rick.ttml", duration=300)
+    lrclib_other_cut = _candidate("lrclib", "lrc", "rick.lrc", duration=300)
+    for c in (plain_lrc, other_cut, lrclib_other_cut):
+        validate(c, 213.6, 3.0)
+    assert rank([lrclib_other_cut, other_cut, plain_lrc], 213.6) == [
+        plain_lrc, other_cut, lrclib_other_cut]
 
 
 def test_rank_prefers_word_timing_then_source():

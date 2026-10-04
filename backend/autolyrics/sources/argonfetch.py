@@ -1,5 +1,6 @@
 """ArgonFetch: turns a song link into metadata and a downloadable audio stream."""
 
+import asyncio
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -10,12 +11,13 @@ import httpx
 from autolyrics.config import settings
 
 _YT_HOSTS = ("youtube.com", "www.youtube.com", "music.youtube.com", "m.youtube.com", "youtu.be")
-# Decorations YouTube titles carry that are not part of the song title.
-_TITLE_NOISE = re.compile(
-    r"\s*(?:[\(\[](?:official|offizielles|lyric|lyrics|audio|video|visuali[sz]er|hd|4k|explicit|"
-    r"clip|musikvideo|music video)[^\)\]]*[\)\]]|\|.*$)",
-    re.IGNORECASE,
-)
+# Bracketed decorations YouTube titles carry that are not part of the song title.
+_NOISE_WORDS = (r"official|offiziell|lyric|audio|video|visuali[sz]er|\bhd\b|\b4k\b|explicit|clip|"
+                r"out now|prod\.?|premiere|feat\.?|ft\.|remaster")
+_BRACKETED_NOISE = re.compile(rf"\s*[\(\[][^\)\]]*(?:{_NOISE_WORDS})[^\)\]]*[\)\]]", re.IGNORECASE)
+# Unbracketed tails: "Song prod. by X", "Song | A COLORS SHOW", "Song feat. X".
+_TAIL_NOISE = re.compile(r"\s+(?:prod\.?\s+by\b.*|\|.*|(?:feat\.?|ft\.)\s.*)$", re.IGNORECASE)
+_QUOTES = "\"'“”„‘’«»"
 
 
 @dataclass
@@ -58,12 +60,13 @@ def youtube_video_id(url: str | None) -> str | None:
 
 
 def clean_youtube_title(title: str, author: str | None) -> tuple[str, list[str]]:
-    """Split "Artist - Title (Official Video)" into title and artists."""
-    title = _TITLE_NOISE.sub("", title).strip()
+    """Split 'Artist - "Title" (Official Video) prod. by X' into title and artists."""
     artists = [author.removesuffix(" - Topic").strip()] if author else []
     if " - " in title:
-        left, right = title.split(" - ", 1)
-        return right.strip(), [a.strip() for a in re.split(r",|&| x | feat\.? ", left) if a.strip()]
+        left, title = title.split(" - ", 1)
+        artists = [a.strip() for a in re.split(r",|&| x | feat\.? ", left) if a.strip()]
+    title = _BRACKETED_NOISE.sub("", title)
+    title = _TAIL_NOISE.sub("", title).strip().strip(_QUOTES).strip()
     return title, artists
 
 
@@ -73,12 +76,30 @@ def _split_artists(author: str | None) -> list[str]:
     return [a.strip() for a in author.split(",") if a.strip()]
 
 
+RETRIES = 3
+
+
+async def _retry(make_call):
+    """ArgonFetch occasionally drops a connection or answers 5xx while busy; try again."""
+    for attempt in range(RETRIES):
+        try:
+            return await make_call()
+        except (httpx.TransportError, httpx.HTTPStatusError) as error:
+            transient = isinstance(error, httpx.TransportError) or error.response.status_code >= 500
+            if not transient or attempt == RETRIES - 1:
+                raise
+            await asyncio.sleep(2 * (attempt + 1))
+    raise AssertionError("unreachable")
+
+
 async def resolve(url: str, client: httpx.AsyncClient) -> ResolvedTrack:
-    response = await client.get(
-        f"{settings.argonfetch_base_url}/api/Fetch/GetResource", params={"url": url}, timeout=180
-    )
-    response.raise_for_status()
-    body = response.json()
+    async def call():
+        response = await client.get(f"{settings.argonfetch_base_url}/api/Fetch/GetResource",
+                                    params={"url": url}, timeout=180)
+        response.raise_for_status()
+        return response.json()
+
+    body = await _retry(call)
     if body.get("type") != "Media" or not body.get("mediaItems"):
         raise ValueError(f"ArgonFetch did not return a single track for {url} ({body.get('type')})")
     item = body["mediaItems"][0]
@@ -96,10 +117,15 @@ async def resolve(url: str, client: httpx.AsyncClient) -> ResolvedTrack:
     # For a Spotify link the top-level requestedUrl is the YouTube Music match ArgonFetch chose.
     video_id = youtube_video_id(body.get("requestedUrl")) or youtube_video_id(url)
     title = item.get("title") or body.get("title")
-    artists = _split_artists(item.get("author") or body.get("author"))
+    author = item.get("author") or body.get("author")
+    artists = _split_artists(author)
 
-    if not title and video_id:
-        title, artists = await _youtube_oembed(video_id, client)
+    if youtube_video_id(url):
+        # A YouTube link carries the video's title, not the song's; Spotify links are clean.
+        if title:
+            title, artists = clean_youtube_title(title, author)
+        elif video_id:
+            title, artists = await _youtube_oembed(video_id, client)
 
     return ResolvedTrack(
         source_url=url,
@@ -132,11 +158,19 @@ async def download_audio(track: ResolvedTrack, dest_dir: Path, client: httpx.Asy
     if rendition.convert_to:
         url += f"?format={rendition.convert_to}"
     dest = dest_dir / f"source{rendition.extension or '.audio'}"
-    async with client.stream("GET", url, timeout=httpx.Timeout(30, read=300)) as response:
-        response.raise_for_status()
-        with dest.open("wb") as fh:
-            async for chunk in response.aiter_bytes(1 << 16):
-                fh.write(chunk)
+    if dest.exists() and dest.stat().st_size > 0:
+        return dest  # a rerun of the same job keeps its audio (and the vocals made from it)
+    partial = dest.with_suffix(dest.suffix + ".part")
+
+    async def call():
+        async with client.stream("GET", url, timeout=httpx.Timeout(30, read=300)) as response:
+            response.raise_for_status()
+            with partial.open("wb") as fh:
+                async for chunk in response.aiter_bytes(1 << 16):
+                    fh.write(chunk)
+
+    await _retry(call)
+    partial.replace(dest)
     if dest.stat().st_size == 0:
         raise ValueError("ArgonFetch returned an empty audio file")
     return dest

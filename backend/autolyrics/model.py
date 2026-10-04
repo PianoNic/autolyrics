@@ -108,6 +108,12 @@ class Lyrics(BaseModel):
             return SyncType.LINE
         return SyncType.UNSYNCED
 
+    def strip_timing(self) -> None:
+        for line in self.lines:
+            line.begin = line.end = None
+            for w in line.all_words:
+                w.begin = w.end = w.confidence = None
+
     @property
     def plain_text(self) -> str:
         out = []

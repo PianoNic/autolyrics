@@ -28,6 +28,10 @@ class Settings(BaseSettings):
         "sgl/deepseek", validation_alias=AliasChoices("AGENT_MODEL", "AUTOLYRICS_LLM_MODEL")
     )
 
+    # lyrics-api.boidu.dev (Better Lyrics TTML, QQ QRC) answers cached songs without a key and
+    # needs one for everything else.
+    boidu_api_key: str | None = Field(None, validation_alias="AUTOLYRICS_BOIDU_API_KEY")
+
     # How far a lyrics source's length may differ from the audio before it counts as another
     # version of the song (e.g. a live session versus the studio recording).
     duration_tolerance: float = Field(3.0, validation_alias="AUTOLYRICS_DURATION_TOLERANCE")

@@ -22,10 +22,16 @@ link ─► resolve ─► audio ─► lyrics search ─┬─ word-synced foun
 3. **Lyrics** – Python ports of Composer's providers (binimum, boidu TTML, portato QRC, LRCLIB),
    queried in parallel and filtered by duration. Each result keeps its sync type.
 4. **Route** – a word- or syllable-synced result skips to stage 7.
-5. **Separate** – Demucs htdemucs on the GPU → vocals stem.
-6. **Align** – WhisperX forced alignment of the known text against the vocals, line by line, using
-   LRC line times as windows when present. Every word gets a confidence. With no lyrics anywhere,
-   fall back to Whisper large-v3 transcription and flag every word.
+5. **Separate** – Demucs htdemucs_ft on the GPU → vocals stem (10–15 s per song on an RTX 5080).
+6. **Align** – torchaudio MMS_FA forced alignment (one wav2vec2 model for 1,100+ languages, text
+   romanised to a–z) instead of WhisperX's per-language models. A whole-song pass first; for
+   line-synced text it also measures, per line, how far the given line times sit from the audio
+   (a local median, because music videos insert skits mid-song), then aligns each line in its
+   shifted window. Words with no letters ("—") are interpolated; isolated low-confidence words are
+   re-anchored to their neighbour. With no lyrics anywhere, fall back to Whisper large-v3
+   transcription and flag every word.
+   Word-synced sources are not re-timed but **offset-checked**: their text is aligned and, if the
+   source sits consistently off this audio (another master), all its times are shifted.
 7. **Final touches (DeepSeek API)** – limited, JSON-only tasks: pick between sources where their
    text disagrees, mark background vocals and ad-libs, line breaks, consistent spelling, flag
    suspected errors. Never changes timings and never invents words outside the candidate texts.
@@ -52,3 +58,26 @@ link ─► resolve ─► audio ─► lyrics search ─┬─ word-synced foun
 5. Whisper-only fallback and polish.
 
 Test track throughout: the COLORS version (153 s) from the original manual run.
+
+## Alignment benchmark
+
+`backend/scripts/benchmark_align.py` re-aligns songs whose real word timing is known and reports the
+start error after removing the constant offset between the source's master and ours.
+
+| Song | Input | median | < 250 ms | < 500 ms |
+|---|---|---|---|---|
+| Ufo361 – Emotions (German rap) | plain text | 59 ms | 87% | 90% |
+| Ufo361 – Emotions | line-synced | 56 ms | 87% | 89% |
+| Rick Astley – Never Gonna Give You Up | plain text | 56 ms | 83% | 86% |
+| Rick Astley | line-synced | 66 ms | 79% | 82% |
+| Kontra K – Erfolg ist kein Glück (video, +14.4 s intro) | line-synced LRCLIB | ~50 ms | 97–99% | 100% |
+
+Misses cluster in choruses with heavy backing vocals; those words carry low confidence and are
+flagged for review. Offsets found along the way: Rick Astley's Apple TTML is 0.81 s early for the
+YouTube Music audio, Ufo361's binimum TTML 0.13 s.
+
+## Notes
+
+- lyrics-api.boidu.dev (Better Lyrics, Portato) answers cached songs without a key and returns 401
+  for others; set `AUTOLYRICS_BOIDU_API_KEY` to use it fully.
+- Length mismatches (album vs. video cut) demote a source to text-only instead of rejecting it.

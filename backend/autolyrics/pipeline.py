@@ -3,6 +3,7 @@
 Each stage reports progress through `on_event`, which the CLI prints and the API server streams.
 """
 
+import asyncio
 import json
 import re
 import time
@@ -18,6 +19,11 @@ from autolyrics.export import export_all
 from autolyrics.model import Lyrics
 from autolyrics.sources import argonfetch
 from autolyrics.sources.lyrics import Candidate, Query, rank, search_all, validate
+
+# Offset check for word-synced sources: shift when the source sits at least this far off...
+OFFSET_MIN = 0.12
+# ...and its words agree on the shift to within this (median absolute deviation, seconds).
+OFFSET_MAX_SPREAD = 0.15
 
 STAGES = ("resolve", "audio", "lyrics", "align", "polish", "export")
 
@@ -154,6 +160,8 @@ class Job:
             return None
         best = usable[0]
         lyrics = best.lyrics.model_copy(deep=True)
+        if best.text_only:
+            lyrics.strip_timing()
         lyrics.metadata.duration = duration
         track = self.report["track"]
         lyrics.metadata.title = track["title"]
@@ -164,11 +172,68 @@ class Job:
         return lyrics
 
     async def _align(self, lyrics: Lyrics | None, candidates, audio_path, duration) -> Lyrics:
-        if lyrics is not None and lyrics.sync_type.is_word_level:
-            self.emit("align", "skipped", f"{self.report['chosen']['label']} already has word timing")
-            return lyrics
-        self.emit("align", "failed", "Word alignment is not implemented yet")
-        raise PipelineError("align", "no word-synced lyrics found and alignment is not available")
+        if lyrics is None:
+            self.emit("align", "failed", "No lyrics found anywhere; transcription is not available yet")
+            raise PipelineError("align", "no lyrics found")
+        word_level = lyrics.sync_type.is_word_level
+
+        self.emit("align", "running", "Isolating vocals (Demucs)")
+        started = time.time()
+        try:
+            from autolyrics.separation import separate_vocals
+
+            vocals = await asyncio.to_thread(separate_vocals, audio_path, self.job_dir)
+            self.emit("align", "running",
+                      f"Vocals isolated in {time.time() - started:.0f}s; "
+                      + ("checking the source's timing against them" if word_level
+                         else "aligning words"))
+            result = await asyncio.to_thread(self._run_aligner, lyrics, vocals, word_level)
+        except Exception as error:
+            self.emit("align", "failed", str(error))
+            raise PipelineError("align", str(error)) from error
+
+        if word_level:
+            self.report["offset_check"] = result
+            if result.get("applied"):
+                message = (f"{self.report['chosen']['label']} timing kept, shifted "
+                           f"{result['offset'] * 1000:+.0f} ms onto this audio")
+            else:
+                message = f"{self.report['chosen']['label']} timing kept ({result['reason']})"
+            self.emit("align", "done", message, **result)
+        else:
+            self.report["alignment"] = result
+            self.emit("align", "done",
+                      f"{result['words']} words aligned, {result['low_confidence']} uncertain, "
+                      f"{result['interpolated']} interpolated", **result)
+        return lyrics
+
+    def _run_aligner(self, lyrics: Lyrics, vocals: Path, word_level: bool) -> dict:
+        from autolyrics.align import (
+            Aligner,
+            align_lyrics,
+            load_vocals_16k,
+            measure_offset,
+            shift_lyrics,
+        )
+
+        aligner = Aligner()
+        try:
+            samples = load_vocals_16k(vocals, self.job_dir)
+            if not word_level:
+                return align_lyrics(lyrics, samples, aligner)
+            check = measure_offset(lyrics, samples, aligner)
+        finally:
+            aligner.close()
+        # Shift only for a clear, consistent offset; a spread-out difference means the
+        # aligner disagrees word by word, and the source's own timing is the better bet.
+        if check["spread"] is None:
+            return {**check, "applied": False, "reason": "too few confident words to compare"}
+        if abs(check["offset"]) < OFFSET_MIN:
+            return {**check, "applied": False, "reason": "already in sync"}
+        if check["spread"] > OFFSET_MAX_SPREAD:
+            return {**check, "applied": False, "reason": "offset not consistent"}
+        shift_lyrics(lyrics, check["offset"])
+        return {**check, "applied": True, "reason": "consistent offset"}
 
     async def _polish(self, lyrics: Lyrics, candidates) -> Lyrics:
         self.emit("polish", "skipped", "LLM clean-up is not implemented yet")
