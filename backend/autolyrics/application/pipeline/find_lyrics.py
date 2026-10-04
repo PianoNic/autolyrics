@@ -45,8 +45,7 @@ class FindLyricsHandler(ICommandHandler[FindLyricsCommand, Unit]):
         await ctx.reporter.running(Stage.LYRICS, "Searching lyrics sources")
         candidates = await self._collect(ctx)
         for i, candidate in enumerate(candidates):
-            self._parse(candidate, ctx.duration)
-            self._selector.judge(candidate, ctx.duration)
+            self._examine(candidate, ctx.duration)
             self._repository.save_candidate(ctx.job.id, i, candidate)
         ctx.report["candidates"] = [c.summary() for c in candidates]
         ctx.candidates = self._selector.rank(candidates, ctx.duration)
@@ -74,23 +73,46 @@ class FindLyricsHandler(ICommandHandler[FindLyricsCommand, Unit]):
         track = ctx.track
         query = LyricsQuery(track=track.title, artist=", ".join(track.artists),
                             album=options.album, duration=ctx.duration, video_id=track.video_id)
-        candidates = await self._search(query)
+        candidates = await self._search(query, ctx.duration)
         # Some sources only know the main artist; retry with it when the full list finds nothing.
         if not candidates and len(track.artists) > 1:
             query.artist = track.artists[0]
-            candidates = await self._search(query)
+            candidates = await self._search(query, ctx.duration)
         return candidates
 
-    async def _search(self, query: LyricsQuery) -> list[LyricsCandidate]:
-        results = await asyncio.gather(*(p.search(query) for p in self._providers),
-                                       return_exceptions=True)
+    async def _search(self, query: LyricsQuery, duration: float | None) -> list[LyricsCandidate]:
+        """Every provider at once. The first word-synced result that fits this recording ends
+        the search: nothing a slower source could send would be better, and its text is what
+        word-synced files are made from."""
+        tasks = {asyncio.create_task(p.search(query)): p for p in self._providers}
         found: list[LyricsCandidate] = []
-        for provider, result in zip(self._providers, results, strict=True):
-            if isinstance(result, BaseException):
-                log.warning("[%s] crashed: %s", provider.name, result)
-                continue
-            found.extend(result)
+        try:
+            for done in asyncio.as_completed(tasks):
+                try:
+                    result = await done
+                except Exception as error:  # noqa: BLE001 - one broken source must not sink the search
+                    log.warning("[lyrics] a provider crashed: %s", error)
+                    continue
+                for candidate in result:
+                    self._examine(candidate, duration)
+                found.extend(result)
+                if any(self._fits_word_synced(c) for c in result):
+                    break
+        finally:
+            for task in tasks:
+                task.cancel()
         return found
+
+    def _examine(self, candidate: LyricsCandidate, duration: float | None) -> None:
+        """Parse and judge a candidate once."""
+        if candidate.lyrics is None and candidate.rejected is None:
+            self._parse(candidate, duration)
+            self._selector.judge(candidate, duration)
+
+    @staticmethod
+    def _fits_word_synced(candidate: LyricsCandidate) -> bool:
+        return (candidate.rejected is None and not candidate.text_only
+                and candidate.lyrics is not None and candidate.lyrics.sync_type.is_word_level)
 
     def _parse(self, candidate: LyricsCandidate, duration: float | None) -> None:
         try:

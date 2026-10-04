@@ -77,6 +77,25 @@ class TestPipeline:
         report = harness.run(harness.mediator.send(GetJobQuery(result.id))).report
         assert report["offset_check"]["applied"] is True
 
+    def test_a_fitting_word_synced_source_ends_the_search(self, tmp_path):
+        import asyncio
+        import time
+
+        class SlowProvider(FixtureProvider):
+            async def search(self, query):
+                await asyncio.sleep(30)
+                return await super().search(query)
+
+        container = FakeContainer.build(tmp_path, providers=[
+            SlowProvider("lrclib", "lrc", "rick.lrc", SyncType.LINE, 212.0),
+            FixtureProvider("boidu", "ttml", "rick.ttml", SyncType.SYLLABLE)])
+        harness = Harness(container)
+        started = time.monotonic()
+        result = harness.run(harness.process())
+        assert result.status == JobStatus.DONE and time.monotonic() - started < 10
+        report = harness.run(harness.mediator.send(GetJobQuery(result.id))).report
+        assert [c["source"] for c in report["candidates"]] == ["boidu"]
+
     def test_a_crashing_provider_does_not_sink_the_search(self, tmp_path):
         container = FakeContainer.build(tmp_path, providers=[
             CrashingProvider(), FixtureProvider("lrclib", "lrc", "rick.lrc", SyncType.LINE, 212.0)])

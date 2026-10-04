@@ -64,9 +64,13 @@ class LineAnchorer:
         return len(first_hit)
 
     def _timed_transcript_words(self, transcript: Lyrics) -> list[tuple[str, float]]:
-        """Each heard word with an approximate start: its segment's span shared by length."""
+        """Each heard word with its start: the transcriber's own word time, or else its line's
+        span shared by length."""
         out = []
         for line in transcript.lines:
+            if line.words and all(w.timed for w in line.words):
+                out += [(key, w.begin) for w in line.words if (key := self._key(w.text))]
+                continue
             if line.begin is None or line.end is None:
                 continue
             keys = [self._key(w.text) for w in line.words]

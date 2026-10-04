@@ -19,12 +19,17 @@ log = logging.getLogger(__name__)
 
 
 class WhisperTranscriber(ITranscriber):
-    """Whisper through `transformers`, on the GPU when there is one. Its segments become lines;
-    the words are left untimed because the forced aligner times them far more precisely."""
+    """Whisper through `transformers`, on the GPU when there is one, with word timestamps: the
+    line matcher needs to know where each heard word is. Words are grouped into lines at pauses
+    and sentence ends; the forced aligner later times the final text more precisely."""
 
     SAMPLE_RATE = 16000
     VOCALS_16K = "vocals16k.wav"
     BATCH = 8  # pieces per GPU batch; also how often the progress moves
+    GHOST = 0.02  # seconds: shorter "words" are Whisper repeating itself, not singing
+    PAUSE = 0.6  # seconds of silence that end a line
+    LINE_WORDS = 14  # a line longer than this is split at the next word
+    SENTENCE_END = (".", "!", "?")
 
     def __init__(self, ffmpeg: Ffmpeg, languages: LanguageGuesser, activity: VocalActivity,
                  model_id: str = "openai/whisper-large-v3-turbo"):
@@ -54,21 +59,13 @@ class WhisperTranscriber(ITranscriber):
             results = []
             for first in range(0, len(inputs), self.BATCH):
                 batch = inputs[first:first + self.BATCH]
-                results += asr(batch, return_timestamps=True, batch_size=self.BATCH,
+                results += asr(batch, return_timestamps="word", batch_size=self.BATCH,
                                generate_kwargs=kwargs)
                 done = first + len(batch)
                 progress.update(done / len(inputs), f"{done} of {len(inputs)} pieces")
-            chunks = []
-            for piece, result in zip(pieces, results, strict=True):
-                offset = piece.start / self.SAMPLE_RATE
-                for chunk in result.get("chunks") or []:
-                    begin, end = chunk.get("timestamp") or (None, None)
-                    chunks.append({
-                        "text": chunk.get("text"),
-                        "timestamp": (None if begin is None else begin + offset,
-                                      None if end is None else end + offset),
-                    })
-            lyrics = self._to_lyrics(chunks, len(samples) / self.SAMPLE_RATE)
+            heard = [self._heard_words(result, piece.start / self.SAMPLE_RATE)
+                     for piece, result in zip(pieces, results, strict=True)]
+            lyrics = self._to_lyrics(heard, len(samples) / self.SAMPLE_RATE)
             lyrics.metadata.language = language or self._languages.guess(lyrics)
             return lyrics
 
@@ -127,22 +124,38 @@ class WhisperTranscriber(ITranscriber):
             log.warning("Whisper language detection failed, transcribing without it: %s", error)
             return None
 
-    @staticmethod
-    def _to_lyrics(chunks: list[dict], duration: float) -> Lyrics:
-        lines = []
-        for chunk in chunks:
+    def _heard_words(self, result: dict, offset: float) -> list[tuple[str, float, float]]:
+        """One piece's words as (text, begin, end) in song time, without the ghosts."""
+        words = []
+        for chunk in result.get("chunks") or []:
             text = (chunk.get("text") or "").strip()
-            words = Word.tokenize(text)
-            if not words:
-                continue
             begin, end = chunk.get("timestamp") or (None, None)
-            begin = float(begin) if begin is not None else None
-            end = float(end) if end is not None else None
-            if begin is not None and (end is None or end <= begin):
-                end = min(duration, begin + max(1.0, 0.4 * len(words)))
-            lines.append(Line(words=words, begin=begin, end=end))
-        if lines and any(line.begin is None for line in lines):
-            # Without usable segment times the aligner places everything itself.
-            for line in lines:
-                line.begin = line.end = None
+            if not text or begin is None or end is None or end - begin < self.GHOST:
+                continue
+            words.append((text, float(begin) + offset, float(end) + offset))
+        return words
+
+    def _to_lyrics(self, pieces: list[list[tuple[str, float, float]]],
+                   duration: float) -> Lyrics:
+        """Timed words grouped into lines: a line ends at a pause, a sentence end, the end of a
+        piece, or when it grows too long."""
+        lines: list[Line] = []
+        for piece in pieces:
+            current: list[tuple[str, float, float]] = []
+            for word in piece:
+                if current and (word[1] - current[-1][2] >= self.PAUSE
+                                or current[-1][0].endswith(self.SENTENCE_END)
+                                or len(current) >= self.LINE_WORDS):
+                    lines.append(self._line(current))
+                    current = []
+                current.append(word)
+            if current:
+                lines.append(self._line(current))
         return Lyrics(lines=lines, metadata=Metadata(duration=duration))
+
+    @staticmethod
+    def _line(words: list[tuple[str, float, float]]) -> Line:
+        last = len(words) - 1
+        return Line(words=[Word(text=text + (" " if i < last else ""), begin=begin, end=end)
+                           for i, (text, begin, end) in enumerate(words)],
+                    begin=words[0][1], end=words[-1][2])

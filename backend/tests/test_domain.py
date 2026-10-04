@@ -338,3 +338,16 @@ class TestLyricsTidier:
         assert lyrics.lines[0].background_text == "Was geht?"
         assert lyrics.lines[1].display == "Bro, bleib locker (Ciao, ciao)"
         assert lyrics.lines[2].display == "Normal line (Already Capital)"
+
+
+class TestLineAnchorerWithWordTimes:
+    def test_uses_the_transcribers_own_word_times(self):
+        from autolyrics.domain.lyrics import Line, Lyrics, Word
+        from autolyrics.domain.services.line_anchorer import LineAnchorer
+
+        heard = Lyrics(lines=[Line(begin=0.0, end=20.0, words=[
+            Word(text="intro ", begin=1.0, end=2.0), Word(text="tell ", begin=12.0, end=12.3),
+            Word(text="me ", begin=12.3, end=12.5), Word(text="how", begin=12.5, end=13.0)])])
+        ours = Lyrics(lines=[Line(words=Word.tokenize("Tell me how you feel now"))])
+        assert LineAnchorer().anchor(ours, heard, 60.0) == 1
+        assert ours.lines[0].begin == 12.0

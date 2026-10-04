@@ -227,7 +227,7 @@ class MmsLyricsAligner(ILyricsAligner):
                 ends = [w.end for w in line.words if w.timed]
                 if ends:
                     previous_end = max(previous_end, max(ends))
-            self._fit_overruns(lines, offsets or [0.0] * len(lines))
+            self._fit_overruns(lines, offsets or [0.0] * len(lines), run)
 
         for line in lines:
             self._align_background(line, run, line_offset)
@@ -284,10 +284,12 @@ class MmsLyricsAligner(ILyricsAligner):
         if first.begin - source_start > self.LATE_START:
             first.begin = round(source_start, 3)
 
-    def _fit_overruns(self, lines: list[Line], offsets: list[float]) -> None:
+    def _fit_overruns(self, lines: list[Line], offsets: list[float],
+                      run: "AlignmentRun | None" = None) -> None:
         """A line whose words run past both its source end and the start of the next line has
-        latched its last words onto an echo or a held note; squeeze it back into its span,
-        keeping the proportions the aligner heard."""
+        latched its last words onto an echo or a held note. Its words are aligned again inside
+        the span they must fit, where the aligner has to find them; when that fails they are
+        squeezed into it, keeping their proportions."""
         for i, (line, offset) in enumerate(zip(lines, offsets, strict=True)):
             timed = [w for w in line.words if w.timed]
             if not timed or line.end is None or i + 1 >= len(lines):
@@ -301,6 +303,8 @@ class MmsLyricsAligner(ILyricsAligner):
                 continue
             if limit - start < 0.2 * len(timed):
                 continue  # no room to squeeze into: leave it to the review
+            if run is not None and run.align_words(line.words, start, limit):
+                continue
             scale = (limit - start) / (end - start)
             for w in timed:
                 w.begin = round(start + (w.begin - start) * scale, 3)

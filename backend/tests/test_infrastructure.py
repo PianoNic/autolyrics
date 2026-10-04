@@ -299,3 +299,21 @@ class TestAppleMusicProvider:
                     LyricsQuery(track="x", artist="y"))
 
         assert asyncio.run(run()) == [] and seen == []
+
+
+class TestWhisperWords:
+    def test_ghost_words_are_dropped_and_lines_break_at_pauses_and_sentence_ends(self):
+        from autolyrics.infrastructure.ml.whisper_transcriber import WhisperTranscriber
+
+        whisper = object.__new__(WhisperTranscriber)
+        result = {"chunks": [
+            {"text": " I", "timestamp": (0.0, 0.3)}, {"text": " need", "timestamp": (0.3, 0.5)},
+            {"text": " you!", "timestamp": (0.5, 0.9)},
+            {"text": " I", "timestamp": (0.9, 0.9)},  # Whisper repeating itself
+            {"text": " Higher", "timestamp": (1.0, 1.4)},
+            {"text": " Louder", "timestamp": (2.5, 3.0)}]}
+        lyrics = whisper._to_lyrics([whisper._heard_words(result, 10.0)], 60.0)
+        assert [line.display for line in lyrics.lines] == ["I need you!", "Higher", "Louder"]
+        first = lyrics.lines[0]
+        assert (first.begin, first.end) == (10.0, 10.9)
+        assert [w.begin for w in first.words] == [10.0, 10.3, 10.5]

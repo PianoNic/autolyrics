@@ -47,6 +47,10 @@ class TranscribeLyricsHandler(ICommandHandler[TranscribeLyricsCommand, Unit]):
         if not lyrics.lines:
             raise await ctx.reporter.fail(Stage.LYRICS, "Whisper heard no vocals in this song")
 
+        # Whisper's word times only placed the lines; the forced aligner times the words far more
+        # precisely, and it only runs on lyrics whose words are untimed.
+        for word in lyrics.all_words:
+            word.begin = word.end = None
         self._tidier.tidy(lyrics)
         lyrics.metadata.title = ctx.track.title
         lyrics.metadata.artists = list(ctx.track.artists)
