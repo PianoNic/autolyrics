@@ -98,3 +98,39 @@ class TestJapanese:
         assert [w.text for w in line.words] == ["ハエ", "の", "羽音 ", "振り", "払い"]
         assert line.text == "ハエの羽音 振り払い"
         assert WordSegmenter(JapaneseText()).segment(Lyrics(lines=[line]), "de") == 0
+
+
+class TestRepositoryFreshness:
+    def test_a_job_rewritten_by_another_process_is_reloaded(self, tmp_path):
+        import os
+        import time
+
+        server = FileJobRepository(tmp_path)
+        cli = FileJobRepository(tmp_path)
+        job = server.create(JobOptions(url="https://x"), job_id="song")
+        job.fail("audio: dropped")
+        server.save(job)
+
+        rerun = cli.get("song")
+        rerun.finish()
+        rerun.title = "Done elsewhere"
+        cli.save(rerun)
+        path = tmp_path / "song" / "job.json"
+        later = time.time() + 5
+        os.utime(path, (later, later))
+
+        assert server.get("song").status == JobStatus.DONE
+        assert server.list()[0].title == "Done elsewhere"
+
+    def test_a_running_job_is_not_overwritten_from_disk(self, tmp_path):
+        import os
+        import time
+
+        repository = FileJobRepository(tmp_path)
+        job = repository.create(JobOptions(url="https://x"), job_id="song")
+        job.start()
+        repository.save(job)
+        path = tmp_path / "song" / "job.json"
+        later = time.time() + 5
+        os.utime(path, (later, later))
+        assert repository.get("song") is job

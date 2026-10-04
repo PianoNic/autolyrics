@@ -1,3 +1,4 @@
+import { useJobAutosave } from "@/auto/editor/job-autosave";
 import { useImportFromJob } from "@/auto/editor/use-import-from-job";
 import { AudioEngine } from "@/audio/audio-engine";
 import { AudioPlayer } from "@/audio/audio-player";
@@ -65,6 +66,7 @@ const AppContent: React.FC = () => {
   useImportFromYouTube();
   usePanicRecovery();
   useImportFromJob();
+  useJobAutosave();
   useAutoSeparate();
   useDocumentTitle();
   useVocalOnsetSnapPoints();

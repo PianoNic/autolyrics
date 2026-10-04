@@ -1,3 +1,4 @@
+import { useJobLinkStore } from "@/auto/editor/job-link-store";
 import { applySavedProject } from "@/lib/apply-saved-project";
 import {
   clearAudioFile,
@@ -192,7 +193,9 @@ function usePersistence(): void {
       // content so we don't nag on every audio-only reload.
       flushPendingSave();
       const state = useProjectStore.getState();
-      if (state.isDirty && state.lines.length > 0) {
+      // Songs from autolyrics save themselves back to the backend; only a free project can be lost.
+      const savedElsewhere = useJobLinkStore.getState().jobId !== null;
+      if (state.isDirty && state.lines.length > 0 && !savedElsewhere) {
         e.preventDefault();
         return "";
       }

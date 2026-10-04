@@ -127,7 +127,10 @@ const StartPage: React.FC = () => {
     <main className="min-h-screen bg-composer-bg text-composer-text">
       <div className="mx-auto flex max-w-2xl flex-col gap-8 px-4 py-12">
         <header className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold">autolyrics</h1>
+          <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
+            <img src="/logo.svg" alt="" className="size-8" />
+            autolyrics
+          </h1>
           <p className="text-sm text-composer-text-muted">
             Paste a song link and get word-synced lyrics. Fix anything you like afterwards, or open the full editor.
           </p>

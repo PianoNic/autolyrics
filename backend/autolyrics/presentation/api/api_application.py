@@ -49,11 +49,15 @@ class FrontendFiles:
             app.mount("/assets", StaticFiles(directory=self._dist / "assets"), name="assets")
         app.add_api_route("/{path:path}", self.serve, include_in_schema=False)
 
+    # Hashed bundles under /assets may be cached forever; everything else (index.html, the logo)
+    # must be revalidated, or a rebuilt frontend keeps showing stale files.
+    REVALIDATE: ClassVar = {"Cache-Control": "no-cache"}
+
     async def serve(self, path: str) -> FileResponse:
         candidate = (self._dist / path).resolve()
         if path and candidate.is_file() and self._dist.resolve() in candidate.parents:
-            return FileResponse(candidate)
-        return FileResponse(self._dist / "index.html")
+            return FileResponse(candidate, headers=self.REVALIDATE)
+        return FileResponse(self._dist / "index.html", headers=self.REVALIDATE)
 
 
 class ApiApplication:

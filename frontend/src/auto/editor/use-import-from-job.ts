@@ -1,11 +1,10 @@
 import { autolyrics, type JobLyrics } from "@/auto/api/autolyrics-client";
+import { saveLinkedJob } from "@/auto/editor/job-autosave";
 import { type ReviewCheck, useJobLinkStore } from "@/auto/editor/job-link-store";
 import { describeFlags, lineBounds, lineDisplay, needsReview } from "@/auto/review/flags";
 import { DEFAULT_AGENTS } from "@/domain/agent/colors";
 import { getPersistenceSettled } from "@/lib/persistence-settled";
-import { isProjectNonEmpty } from "@/lib/project-non-empty";
 import { useAudioStore } from "@/stores/audio";
-import { useConfirm } from "@/stores/confirm-store";
 import { useProjectStore } from "@/stores/project";
 import { parseLyricsFile } from "@/utils/lyrics-parsers";
 import { useEffect } from "react";
@@ -57,11 +56,9 @@ async function fetchJobFiles(
 // -- Hook ---------------------------------------------------------------------
 
 // `/editor?job=<id>` opens an autolyrics job in the editor on the timeline: its TTML becomes the
-// project, its audio the song, and its flagged lines the "to check" list. The parameter is removed afterwards, so a reload keeps the edits (persisted by
-// the editor as usual) instead of importing the job again.
+// project, its audio the song, and its flagged lines the "to check" list. The parameter is
+// removed afterwards, so a reload keeps the edits instead of importing the job again.
 function useImportFromJob(): void {
-  const confirm = useConfirm();
-
   useEffect(() => {
     if (typeof window === "undefined") return;
     const jobId = new URLSearchParams(window.location.search).get(JOB_PARAM);
@@ -74,19 +71,9 @@ function useImportFromJob(): void {
         await getPersistenceSettled();
         if (cancelled) return;
 
-        const sameJob = useJobLinkStore.getState().jobId === jobId;
-        if (!sameJob && (await isProjectNonEmpty())) {
-          const ok = await confirm({
-            title: "Replace current project?",
-            description: "Opening this song replaces the project in the editor. Unsaved work will be lost.",
-            confirmLabel: "Replace project",
-            variant: "destructive",
-          });
-          if (!ok || cancelled) {
-            stripJobParam();
-            return;
-          }
-        }
+        // Opening a song always replaces the project; the previous song keeps its edits.
+        if (useJobLinkStore.getState().jobId !== jobId) await saveLinkedJob();
+        if (cancelled) return;
 
         const parsed = parseLyricsFile("lyrics.ttml", files.ttml);
         if (parsed.lines.length === 0) throw new Error("the job has no lyrics");
@@ -117,7 +104,7 @@ function useImportFromJob(): void {
     return () => {
       cancelled = true;
     };
-  }, [confirm]);
+  }, []);
 }
 
 // -- Exports ------------------------------------------------------------------

@@ -174,6 +174,7 @@ const autolyrics = {
   audioUrl: (id: string) => `${API_ROOT}/jobs/${encodeURIComponent(id)}/audio`,
   fileUrl: (id: string, name: string) => `${API_ROOT}/jobs/${encodeURIComponent(id)}/files/${name}`,
   eventsUrl: (id: string) => `${API_ROOT}/jobs/${encodeURIComponent(id)}/events`,
+  ttmlUrl: (id: string) => `${API_ROOT}/jobs/${encodeURIComponent(id)}/ttml`,
 };
 
 // -- Exports ------------------------------------------------------------------

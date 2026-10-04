@@ -22,7 +22,9 @@ class FileJobRepository(IJobRepository):
         output/           lyrics.json plus every export format
 
     An identity map: `get` hands out one Job instance per id, so the pipeline and the event
-    handlers update the same object instead of overwriting each other's copies.
+    handlers update the same object instead of overwriting each other's copies. A job another
+    process changed on disk (the CLI, a second server) is re-read, unless this process is the one
+    running it.
     """
 
     JOB_FILE = "job.json"
@@ -33,6 +35,7 @@ class FileJobRepository(IJobRepository):
     def __init__(self, root: Path):
         self._root = root
         self._jobs: dict[str, Job] = {}
+        self._mtimes: dict[str, float] = {}
         self._lock = threading.RLock()
 
     def create(self, options: JobOptions, job_id: str | None = None) -> Job:
@@ -53,7 +56,9 @@ class FileJobRepository(IJobRepository):
 
     def get(self, job_id: str) -> Job:
         with self._lock:
-            job = self._jobs.get(job_id) or self._load(job_id)
+            job = self._jobs.get(job_id)
+            if job is None or self._changed_on_disk(job):
+                job = self._load(job_id) or job
             if job is None:
                 raise JobNotFoundError(job_id)
             return job
@@ -62,14 +67,17 @@ class FileJobRepository(IJobRepository):
         with self._lock:
             if self._root.exists():
                 for directory in self._root.iterdir():
-                    if directory.name not in self._jobs:
+                    cached = self._jobs.get(directory.name)
+                    if cached is None or self._changed_on_disk(cached):
                         self._load(directory.name)
             return sorted(self._jobs.values(), key=lambda j: j.created, reverse=True)
 
     def save(self, job: Job) -> None:
         with self._lock:
             self._jobs[job.id] = job
-            self._write(self.workspace(job.id) / self.JOB_FILE, job.model_dump_json(indent=2))
+            path = self.workspace(job.id) / self.JOB_FILE
+            self._write(path, job.model_dump_json(indent=2))
+            self._mtimes[job.id] = path.stat().st_mtime
 
     def delete(self, job_id: str) -> None:
         with self._lock:
@@ -137,11 +145,23 @@ class FileJobRepository(IJobRepository):
             job = Job.model_validate_json(path.read_text(encoding="utf-8"))
         except ValueError:
             return None
-        if job.status.active:
+        previous = self._jobs.get(job.id)
+        if job.status.active and previous is None:
             # Nothing runs across restarts; a job caught mid-run did not finish.
             job.fail("interrupted")
         self._jobs[job.id] = job
+        self._mtimes[job.id] = path.stat().st_mtime
         return job
+
+    def _changed_on_disk(self, job: Job) -> bool:
+        """A job this process is not running whose file someone else rewrote."""
+        if job.status.active:
+            return False
+        try:
+            mtime = (self.workspace(job.id) / self.JOB_FILE).stat().st_mtime
+        except OSError:
+            return False
+        return mtime > self._mtimes.get(job.id, 0.0)
 
     @staticmethod
     def _write(path: Path, content: str) -> None:

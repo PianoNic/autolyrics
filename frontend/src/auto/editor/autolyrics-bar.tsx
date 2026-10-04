@@ -1,27 +1,25 @@
-import { ApiError, autolyrics } from "@/auto/api/autolyrics-client";
-import { useJobLinkStore } from "@/auto/editor/job-link-store";
+import { autolyrics } from "@/auto/api/autolyrics-client";
+import { saveLinkedJob } from "@/auto/editor/job-autosave";
+import { type SaveState, useJobLinkStore } from "@/auto/editor/job-link-store";
 import { nextFrame } from "@/lib/frame-loop";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
-import { Button } from "@/ui/button";
 import { buttonClassName } from "@/ui/button-class-name";
 import { Popover } from "@/ui/popover";
 import { cn } from "@/utils/cn";
 import { formatTime } from "@/utils/format-time";
-import { generateTTML } from "@/utils/ttml";
 import { revealTimeInMountedTimeline } from "@/views/timeline/scroll-helpers";
 import {
+  IconAlertTriangle,
   IconArrowLeft,
   IconCircleCheck,
   IconCircleDashed,
-  IconDeviceFloppy,
+  IconCloudCheck,
   IconDownload,
   IconListCheck,
   IconLoader2,
 } from "@tabler/icons-react";
-import { useState } from "react";
 import { Link } from "react-router-dom";
-import { toast } from "sonner";
 
 // -- Constants ----------------------------------------------------------------
 
@@ -120,32 +118,50 @@ const DownloadsMenu: React.FC<{ jobId: string }> = ({ jobId }) => (
           </a>
         </li>
       ))}
-      <li className="px-2.5 pt-1.5 text-xs text-composer-text-faint">Save first to include your edits.</li>
-    </ul>
+          </ul>
   </Popover>
 );
+
+const SAVE_LABELS: Record<SaveState, string> = {
+  saved: "Saved",
+  pending: "Saving…",
+  saving: "Saving…",
+  error: "Not saved, retry",
+};
+
+// Edits save themselves; this only says so, and retries when a save failed.
+const SaveStatus: React.FC = () => {
+  const saveState = useJobLinkStore((s) => s.saveState);
+  const busy = saveState === "pending" || saveState === "saving";
+  return (
+    <button
+      type="button"
+      disabled={saveState !== "error"}
+      onClick={() => void saveLinkedJob()}
+      aria-live="polite"
+      className={cn(
+        buttonClassName({ size: "sm", hasIcon: true, variant: "ghost" }),
+        "disabled:cursor-default disabled:opacity-100",
+        saveState === "error" && "text-composer-error-text",
+      )}
+    >
+      {busy ? (
+        <IconLoader2 size={14} className="animate-spin" />
+      ) : saveState === "error" ? (
+        <IconAlertTriangle size={14} />
+      ) : (
+        <IconCloudCheck size={14} className="text-composer-positive" />
+      )}
+      {SAVE_LABELS[saveState]}
+    </button>
+  );
+};
 
 // Shown in the editor header when the project came from an autolyrics job.
 const AutolyricsBar: React.FC = () => {
   const jobId = useJobLinkStore((s) => s.jobId);
   const title = useJobLinkStore((s) => s.title);
-  const [saving, setSaving] = useState(false);
   if (!jobId) return null;
-
-  // Writes the editor's TTML back to the job, which re-exports every format.
-  const save = async () => {
-    setSaving(true);
-    try {
-      const { metadata, agents, lines, groups } = useProjectStore.getState();
-      const result = await autolyrics.saveTtml(jobId, generateTTML({ metadata, agents, lines, groups }));
-      useProjectStore.getState().markClean();
-      toast.success(`Saved to autolyrics (${result.sync} sync)`);
-    } catch (error) {
-      toast.error(error instanceof ApiError ? error.message : "Could not save to autolyrics");
-    } finally {
-      setSaving(false);
-    }
-  };
 
   return (
     <div className="flex items-center gap-1.5">
@@ -155,10 +171,7 @@ const AutolyricsBar: React.FC = () => {
       </Link>
       <ChecksMenu />
       <DownloadsMenu jobId={jobId} />
-      <Button size="sm" variant="primary" hasIcon disabled={saving} onClick={() => void save()}>
-        {saving ? <IconLoader2 size={14} className="animate-spin" /> : <IconDeviceFloppy size={14} />}
-        Save to autolyrics
-      </Button>
+      <SaveStatus />
     </div>
   );
 };
