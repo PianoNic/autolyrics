@@ -9,6 +9,8 @@ const FLAG_LABELS: Record<string, string> = {
   "low-confidence": "The aligner was unsure about this word",
   reanchored: "Moved next to its neighbour; check the timing",
   "llm-note": "DeepSeek asked for a second look at this line",
+  transcribed: "Heard by Whisper; no lyrics source had this song",
+  "line-timing": "The aligner could not hear this line; timed from the lyrics source's line",
   "llm-insert": "Line added from other lyrics sources",
   "llm-edit": "Text changed by DeepSeek",
   interpolated: "Time estimated from the neighbouring words",
@@ -22,6 +24,8 @@ const FLAG_LABELS: Record<string, string> = {
 
 const REVIEW_FLAGS: ReadonlySet<string> = new Set([
   "low-confidence",
+  "transcribed",
+  "line-timing",
   "reanchored",
   "llm-note",
   "llm-insert",

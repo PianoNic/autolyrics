@@ -2,13 +2,18 @@
 
 from pathlib import Path
 
-from autolyrics.application.interfaces.audio import IAudioTools, ILyricsAligner, IVocalSeparator
+from autolyrics.application.interfaces.audio import (
+    IAudioTools,
+    ILyricsAligner,
+    ITranscriber,
+    IVocalSeparator,
+)
 from autolyrics.application.interfaces.llm import ILlmClient
 from autolyrics.application.interfaces.lyrics import ILyricsProvider
 from autolyrics.application.interfaces.media import IMediaResolver
 from autolyrics.composition.container import Container
 from autolyrics.domain.candidate import LyricsCandidate, LyricsQuery
-from autolyrics.domain.lyrics import Line, Lyrics, SyncType
+from autolyrics.domain.lyrics import Line, Lyrics, SyncType, Word
 from autolyrics.domain.track import AudioRendition, Track
 from autolyrics.infrastructure.config import Settings
 
@@ -98,6 +103,22 @@ class FakeAligner(ILyricsAligner):
         self.released += 1
 
 
+class FakeTranscriber(ITranscriber):
+    def __init__(self, text: str = "Hello from Whisper\nSecond line here"):
+        self.text = text
+        self.released = 0
+
+    def transcribe(self, vocals: Path, workspace: Path, language: str | None = None) -> Lyrics:
+        lines = [Line(words=Word.tokenize(t), begin=10.0 * i, end=10.0 * i + 4)
+                 for i, t in enumerate(self.text.splitlines()) if t.strip()]
+        lyrics = Lyrics(lines=lines)
+        lyrics.metadata.language = "en"
+        return lyrics
+
+    def release(self) -> None:
+        self.released += 1
+
+
 class FakeLlm(ILlmClient):
     def __init__(self, answer: dict | None = None, configured: bool = True):
         self.answer = answer or {"language": "en"}
@@ -127,4 +148,5 @@ class FakeContainer:
         container.separator = overrides.get("separator", FakeSeparator())
         container.aligner = overrides.get("aligner", FakeAligner())
         container.llm = overrides.get("llm", FakeLlm(configured=False))
+        container.transcriber = overrides.get("transcriber", FakeTranscriber())
         return container

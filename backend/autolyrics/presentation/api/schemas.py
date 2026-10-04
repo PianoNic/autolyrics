@@ -7,6 +7,7 @@ class CreateJobRequest(BaseModel):
     artist: str | None = None
     album: str | None = None
     skip_llm: bool = False
+    transcribe: bool = False
 
 
 class RealignLineRequest(BaseModel):

@@ -18,6 +18,7 @@ from tests.fakes import (
     FakeContainer,
     FakeLlm,
     FakeMedia,
+    FakeTranscriber,
     FixtureProvider,
 )
 
@@ -82,11 +83,30 @@ class TestPipeline:
         harness = Harness(container)
         assert harness.run(harness.process()).status == JobStatus.DONE
 
-    def test_no_lyrics_fails_the_job_at_align(self, tmp_path):
-        harness = Harness(FakeContainer.build(tmp_path, providers=[]))
+    def test_no_lyrics_anywhere_falls_back_to_transcription(self, tmp_path):
+        container = FakeContainer.build(tmp_path, providers=[])
+        harness = Harness(container)
+        result = harness.run(harness.process())
+        assert result.status == JobStatus.DONE
+        lyrics = harness.run(harness.mediator.send(GetLyricsQuery(result.id)))
+        assert [line.text for line in lyrics.lines] == ["Hello from Whisper", "Second line here"]
+        assert all("transcribed" in w.flags for w in lyrics.all_words)
+        report = harness.run(harness.mediator.send(GetJobQuery(result.id))).report
+        assert report["chosen"]["source"] == "whisper"
+        assert report["transcription"]["words"] == 6
+        assert container.transcriber.released == 1
+
+    def test_transcription_can_be_forced(self, harness):
+        result = harness.run(harness.process(transcribe=True))
+        lyrics = harness.run(harness.mediator.send(GetLyricsQuery(result.id)))
+        assert lyrics.lines[0].text == "Hello from Whisper"
+
+    def test_silence_fails_the_job(self, tmp_path):
+        harness = Harness(FakeContainer.build(tmp_path, providers=[],
+                                              transcriber=FakeTranscriber(text="")))
         result = harness.run(harness.process())
         assert result.status == JobStatus.FAILED
-        assert result.error.startswith("align:")
+        assert "heard no vocals" in result.error
 
     def test_resolve_failure_fails_the_job(self, tmp_path):
         harness = Harness(FakeContainer.build(tmp_path, media=FakeMedia(fail=True)))

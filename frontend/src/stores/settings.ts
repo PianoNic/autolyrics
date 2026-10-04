@@ -8,7 +8,7 @@ import { persist } from "zustand/middleware";
 
 type GranularityDefault = "word" | "line";
 type LinkedDivergenceAction = "ask" | "apply" | "detach";
-type PreviewRenderer = "braccato" | "am-lyrics";
+type PreviewRenderer = "spicy" | "braccato" | "am-lyrics";
 type VocalModelVariant = "fp16" | "fp32";
 
 interface ExperimentFlags {
@@ -148,7 +148,7 @@ const DEFAULTS: SettingsState = {
   confirmClearImportedSongDetails: true,
   linkedDivergenceAction: "ask",
 
-  previewRenderer: "braccato",
+  previewRenderer: "spicy",
 
   autoSeparateOnImport: false,
   vocalModelVariant: "fp32",
@@ -167,7 +167,9 @@ const BUILTIN_COBALT_INSTANCE: CobaltInstance = {
   url: "https://cobalt.boidu.dev",
 };
 
-const SETTINGS_PERSIST_VERSION = 6;
+const SETTINGS_PERSIST_VERSION = 7;
+
+const PREVIEW_RENDERERS: readonly PreviewRenderer[] = ["spicy", "braccato", "am-lyrics"];
 
 function migrateSettings(persistedState: unknown, version: number): unknown {
   if (!persistedState || typeof persistedState !== "object") return persistedState;
@@ -184,6 +186,10 @@ function migrateSettings(persistedState: unknown, version: number): unknown {
   // The key predates the default flip, so every old blob carries an explicit
   // false that a plain undefined guard would never reach.
   if (version < 6) next.preserveBracketsOnExtraction = true;
+  // Braccato was the default before Spicy, so a blob from then carries it whether or not
+  // it was ever picked; am-lyrics was always a deliberate choice and stays.
+  if (version < 7 && next.previewRenderer === "braccato") next.previewRenderer = "spicy";
+  if (!PREVIEW_RENDERERS.includes(next.previewRenderer as PreviewRenderer)) next.previewRenderer = "spicy";
   return next;
 }
 

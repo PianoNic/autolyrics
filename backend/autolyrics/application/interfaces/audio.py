@@ -36,3 +36,17 @@ class ILyricsAligner(ABC):
     @abstractmethod
     def release(self) -> None:
         """Free the model (GPU memory) until it is needed again."""
+
+
+class ITranscriber(ABC):
+    """Hears lyrics in isolated vocals: the fallback when no lyrics source knows the song.
+    Blocking; call it off the event loop."""
+
+    @abstractmethod
+    def transcribe(self, vocals: Path, workspace: Path, language: str | None = None) -> Lyrics:
+        """Lines with their approximate begin/end times; words are untimed (the aligner times
+        them) and `metadata.language` is the detected language."""
+
+    @abstractmethod
+    def release(self) -> None:
+        """Free the model (GPU memory) until it is needed again."""

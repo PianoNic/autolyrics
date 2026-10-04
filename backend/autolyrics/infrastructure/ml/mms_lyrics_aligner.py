@@ -13,6 +13,7 @@ from autolyrics.domain.services.language_guesser import LanguageGuesser
 from autolyrics.domain.services.offset_estimator import OffsetEstimator
 from autolyrics.domain.services.timing_repairer import TimingRepairer
 from autolyrics.infrastructure.media.ffmpeg import Ffmpeg
+from autolyrics.infrastructure.ml.japanese_text import JapaneseText, WordSegmenter
 from autolyrics.infrastructure.ml.mms_model import MmsModel
 from autolyrics.infrastructure.ml.text_normalizer import AlignmentTextNormalizer
 
@@ -72,10 +73,17 @@ class MmsLyricsAligner(ILyricsAligner):
     VOCALS_16K = "vocals16k.wav"
     LINE_PADDING = 0.75  # seconds of slack around a line-synced line's window
     WIDER = 3.0  # extra seconds when a line does not fit its window
+    # How far a line may start before the previous one ended: only a guard against lines
+    # overtaking each other; a tight value lets one misplaced line push every later one.
+    ORDER_SLACK = 1.5
+    UNSURE_LINE = 0.2  # mean word confidence below which a line's alignment is a guess
+    SOURCE_TRUST = 1.0  # seconds a guess may stray from the source's line time
 
     def __init__(self, ffmpeg: Ffmpeg, repairer: TimingRepairer, offsets: OffsetEstimator,
-                 languages: LanguageGuesser):
+                 languages: LanguageGuesser, japanese: JapaneseText, segmenter: WordSegmenter):
         self._ffmpeg = ffmpeg
+        self._japanese = japanese
+        self._segmenter = segmenter
         self._repairer = repairer
         self._offsets = offsets
         self._languages = languages
@@ -86,8 +94,35 @@ class MmsLyricsAligner(ILyricsAligner):
 
     def align(self, lyrics: Lyrics, vocals: Path, workspace: Path) -> dict:
         with self._lock:
-            run = self._run(vocals, workspace, self._languages.guess(lyrics))
-            return self._align(lyrics, run)
+            language = self._languages.guess(lyrics)
+            run = self._run(vocals, workspace, language)
+            stats = self._align(lyrics, run)
+            # Space-less scripts (Japanese) are placed line by line with their written words
+            # first, which is robust; only then is each line split into words and those are timed
+            # inside the line's span. Splitting before placing lets a chorus wander off.
+            split = sum(self._split_and_retime(line, run, language) for line in lyrics.content_lines)
+            return {**stats, "segmented_words": split}
+
+    def _split_and_retime(self, line: Line, run: "AlignmentRun", language: str) -> int:
+        bounds = line.bounds()
+        before = len(line.all_words)
+        split = self._segmenter.segment(Lyrics(lines=[line]), language)
+        if not split or bounds is None:
+            return split
+        start, end = bounds
+        flags = {w.text: list(w.flags) for w in line.all_words}
+        for w in line.all_words:
+            w.begin = w.end = w.confidence = None
+        if not line.words or not run.align_words(line.words, start - 0.15, end + 0.15):
+            self._repairer.spread(line.words, start, end - start, "interpolated")
+        if line.background:
+            run.align_words(line.background, start - 1.0, end + 2.0)
+        self._repairer.repair(line, window=(start, end))
+        for w in line.all_words:
+            # Keep the review flags the whole line earned (e.g. "line-timing").
+            for flag in flags.get(w.text, []):
+                w.flag(flag)
+        return len(line.all_words) - before
 
     def measure_offset(self, lyrics: Lyrics, vocals: Path, workspace: Path) -> dict:
         with self._lock:
@@ -104,6 +139,7 @@ class MmsLyricsAligner(ILyricsAligner):
             hi = min(len(samples), int((end + 1) * MmsModel.SAMPLE_RATE))
             shift = lo / MmsModel.SAMPLE_RATE
             run = AlignmentRun(self._ensure_model(), self._normalizer(), samples[lo:hi], language)
+            self._segmenter.segment(Lyrics(lines=[line]), language)
             for w in line.all_words:
                 w.begin = w.end = w.confidence = None
                 w.flags = []
@@ -131,7 +167,7 @@ class MmsLyricsAligner(ILyricsAligner):
         return self._model
 
     def _normalizer(self) -> AlignmentTextNormalizer:
-        return AlignmentTextNormalizer(self._ensure_model().alphabet)
+        return AlignmentTextNormalizer(self._ensure_model().alphabet, self._japanese)
 
     def _samples(self, vocals: Path, workspace: Path) -> np.ndarray:
         wav = workspace / self.VOCALS_16K
@@ -156,18 +192,31 @@ class MmsLyricsAligner(ILyricsAligner):
             w.flags = []
 
         run.align_song(lines)
-        line_offset, failed = 0.0, 0
+        line_offset, failed, source_timed = 0.0, 0, 0
         if line_synced:
             offsets = self._offsets.local_line_offsets(lines)
             line_offset = float(np.median(offsets)) if offsets else 0.0
+            previous_end = 0.0
+            source_timed = 0
             for line, offset in zip(lines, offsets or [0.0] * len(lines), strict=True):
                 start, end = self._window(line, run.duration, offset)
+                # Lines are sung in order: a line cannot start before the previous one ended,
+                # which keeps a repeated chorus line from landing on the repeat before it.
+                start = max(start, previous_end - self.ORDER_SLACK)
+                end = max(end, start + self.LINE_PADDING)
                 # When the window misses, the line timing may be off: retry wider, else keep
                 # the whole-song pass.
                 if (line.words and not run.align_words(line.words, start, end)
-                        and not run.align_words(line.words, start - self.WIDER,
-                                                end + self.WIDER)):
+                        and not run.align_words(line.words, start, end + self.WIDER)):
                     failed += 1
+                if self._contradicts_source(line, offset):
+                    # Unsure and seconds away from where the source says the line is sung: the
+                    # aligner has latched onto a repeat, an echo or words it cannot read.
+                    self._time_from_source(line, offset, previous_end, run.duration)
+                    source_timed += 1
+                ends = [w.end for w in line.words if w.timed]
+                if ends:
+                    previous_end = max(previous_end, max(ends))
 
         for line in lines:
             self._align_background(line, run, line_offset)
@@ -187,7 +236,31 @@ class MmsLyricsAligner(ILyricsAligner):
             "reanchored": sum("reanchored" in w.flags for w in words),
             "mean_confidence": round(mean(scored), 3) if scored else None,
             "failed_lines": failed,
+            "source_timed_lines": source_timed,
         }
+
+    def _contradicts_source(self, line: Line, offset: float) -> bool:
+        timed = [w for w in line.words if w.timed]
+        if not timed or line.begin is None:
+            return False
+        sure = mean(w.confidence or 0.0 for w in timed)
+        expected = line.begin + offset
+        return sure < self.UNSURE_LINE and abs(timed[0].begin - expected) > self.SOURCE_TRUST
+
+    def _time_from_source(self, line: Line, offset: float, previous_end: float,
+                          duration: float) -> None:
+        """Lay the words over the source's line span, as long as their text, and flag them."""
+        start = max(line.begin + offset, previous_end)
+        end = min(duration, line.end + offset)
+        # LRC lines end where the next begins, which can include a long pause; a sung line rarely
+        # needs more than about a third of a second per word.
+        end = min(end, start + max(1.0, 0.45 * len(line.words)))
+        if end <= start:
+            end = start + 0.3 * len(line.words)
+        for w in line.words:
+            w.confidence = None
+            w.flags = []
+        self._repairer.spread(line.words, start, end - start, "line-timing")
 
     def _align_background(self, line: Line, run: AlignmentRun, line_offset: float) -> None:
         """Background vocals overlap the main line, so they get their own pass around it."""

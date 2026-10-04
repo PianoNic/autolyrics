@@ -47,6 +47,8 @@ class JobOptions(BaseModel):
     # Use this lyrics file instead of searching (the user's own TTML, LRC or text).
     lyrics_file: str | None = None
     skip_llm: bool = False
+    # Ignore the lyrics sources and transcribe the vocals (normally only the fallback).
+    transcribe: bool = False
 
 
 class Job(BaseModel):

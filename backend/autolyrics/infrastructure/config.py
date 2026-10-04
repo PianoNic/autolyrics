@@ -35,3 +35,7 @@ class Settings(BaseSettings):
 
     # Demucs model for vocal isolation; htdemucs_ft is about 4x slower than htdemucs but cleaner.
     demucs_model: str = Field("htdemucs_ft", validation_alias="AUTOLYRICS_DEMUCS_MODEL")
+
+    # Whisper model for songs no lyrics source has (transformers model id).
+    whisper_model: str = Field("openai/whisper-large-v3-turbo",
+                               validation_alias="AUTOLYRICS_WHISPER_MODEL")

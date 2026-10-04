@@ -1,6 +1,7 @@
 import { wireFrameLoop } from "@/lib/frame-loop-wiring";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
+import { useSettingsStore } from "@/stores/settings";
 import { POSITION_UTILITIES_CSS, installStyleSheet } from "@/test/browser-css";
 import { createLine } from "@/test/factories";
 import { type FrameProbe, createFrameProbe } from "@/test/frame-probe";
@@ -77,6 +78,8 @@ function romanizedText(el: Element): string {
 }
 
 beforeEach(() => {
+  // These cases drive Braccato's own clock and romanization, so they pin it over the Spicy default.
+  useSettingsStore.setState({ previewRenderer: "braccato" });
   disposeWiring = wireFrameLoop();
   probe = createFrameProbe();
   layoutStyles = installStyleSheet(SIDEBAR_LAYOUT_CSS);

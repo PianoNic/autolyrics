@@ -1,6 +1,11 @@
 """Ports: what the application needs from the outside world. Infrastructure implements them."""
 
-from autolyrics.application.interfaces.audio import IAudioTools, ILyricsAligner, IVocalSeparator
+from autolyrics.application.interfaces.audio import (
+    IAudioTools,
+    ILyricsAligner,
+    ITranscriber,
+    IVocalSeparator,
+)
 from autolyrics.application.interfaces.jobs import (
     IJobEventBroadcaster,
     IJobQueue,
@@ -27,5 +32,6 @@ __all__ = [
     "ILyricsFormats",
     "ILyricsProvider",
     "IMediaResolver",
+    "ITranscriber",
     "IVocalSeparator",
 ]

@@ -33,6 +33,10 @@ class FindLyricsHandler(ICommandHandler[FindLyricsCommand, Unit]):
 
     async def handle(self, command: FindLyricsCommand) -> Unit:
         ctx = command.context
+        if ctx.job.options.transcribe:
+            ctx.report["chosen"] = None
+            await ctx.reporter.skipped(Stage.LYRICS, "Lyrics sources skipped; transcribing instead")
+            return UNIT
         await ctx.reporter.running(Stage.LYRICS, "Searching lyrics sources")
         candidates = await self._collect(ctx)
         for i, candidate in enumerate(candidates):
@@ -46,8 +50,9 @@ class FindLyricsHandler(ICommandHandler[FindLyricsCommand, Unit]):
                                     f"{len(ctx.candidates)} usable of {len(candidates)} found",
                                     candidates=ctx.report["candidates"])
         else:
-            await ctx.reporter.failed(Stage.LYRICS, f"none usable of {len(candidates)} found",
-                                      candidates=ctx.report["candidates"])
+            # Not a failure yet: the transcription stage takes over.
+            await ctx.reporter.running(Stage.LYRICS, f"none usable of {len(candidates)} found",
+                                       candidates=ctx.report["candidates"])
         ctx.lyrics = self._starting_lyrics(ctx)
         return UNIT
 

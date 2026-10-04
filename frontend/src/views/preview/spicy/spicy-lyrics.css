@@ -1,0 +1,468 @@
+/* Adapted from Spicy Lyrics by Spikerko (https://github.com/Spikerko/spicy-lyrics), AGPL-3.0.
+   Upstream: src/css/Lyrics/main.css and src/css/Lyrics/Mixed.css (fcc5f83).
+   `#SpicyLyricsPage .LyricsContainer .LyricsContent` is `.spicy-lyrics` here. Spicy's static lyrics,
+   simple / minimal / fullscreen / compact modes, credits and popup sizing are left out, and its
+   hard-coded white follows Composer's text colour instead. */
+
+.spicy-lyrics-root {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0%;
+  min-height: 0;
+}
+
+.spicy-lyrics {
+  --spicy-text: var(--color-composer-text, #fff);
+  --DefaultLyricsSize: clamp(1.85rem, calc(1cqw * 7), 3.5rem);
+  --SpicyLyrics-LineSpacing: 1cqw 0;
+
+  position: relative;
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  font-size: var(--DefaultLyricsSize);
+  font-weight: 700;
+  scrollbar-width: none;
+  container-type: inline-size;
+  overscroll-behavior: contain;
+
+  --ImageMask: linear-gradient(
+    180deg,
+    transparent 0,
+    transparent 16px,
+    #000 64px,
+    #000 calc(100% - 64px),
+    transparent calc(100% - 16px),
+    transparent
+  );
+  -webkit-mask-image: var(--ImageMask);
+  mask-image: var(--ImageMask);
+}
+
+.spicy-lyrics::-webkit-scrollbar {
+  display: none;
+}
+
+[data-lyrics-layout="sidebar"] .spicy-lyrics {
+  --DefaultLyricsSize: clamp(1.1rem, calc(1cqw * 7), 1.6rem);
+}
+
+.spicy-lyrics .SpicyLyricsScrollContainer {
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  /* Room for the first line to start a quarter down and the last to reach the centre. Viewport
+     units, not the scroller's own height: an unbounded scroller would feed its padding back into
+     the height it is measured from. */
+  padding-top: 25vh;
+  padding-bottom: 50vh;
+}
+
+.spicy-lyrics.HideLineBlur .line {
+  --BlurAmount: 0px !important;
+}
+
+.spicy-lyrics .line {
+  --font-size: var(--DefaultLyricsSize);
+  display: flex;
+  flex-wrap: wrap;
+  transition: opacity 0.2s cubic-bezier(0.61, 1, 0.88, 1);
+  font-size: var(--font-size);
+  will-change: transform, opacity;
+}
+
+.spicy-lyrics .line .word,
+.spicy-lyrics .line .letter,
+.spicy-lyrics .line {
+  cursor: pointer;
+  font-weight: 700;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  -webkit-background-clip: text;
+  position: relative;
+}
+
+/* Only the active line's words move, so only they get their own compositor layer. */
+.spicy-lyrics .line.Active .word,
+.spicy-lyrics .line.Active .letterGroup,
+.spicy-lyrics .line.Active .letter {
+  will-change: transform, scale, opacity;
+}
+
+.spicy-lyrics .line,
+.spicy-lyrics .line .word,
+.spicy-lyrics .line .letter {
+  --gradient-position: -20%;
+  --gradient-alpha: 0.85;
+  --gradient-alpha-end: 0.5;
+  --gradient-degrees: 90deg;
+  --gradient-offset: 0%;
+}
+
+.spicy-lyrics .line.Active,
+.spicy-lyrics .line.Active .word,
+.spicy-lyrics .line.Active .letter {
+  background-image: linear-gradient(
+    var(--gradient-degrees),
+    color-mix(in srgb, var(--spicy-text) calc(var(--gradient-alpha) * 100%), transparent) var(--gradient-position),
+    color-mix(in srgb, var(--spicy-text) calc(var(--gradient-alpha-end) * 100%), transparent)
+      calc(var(--gradient-position) + 20% + var(--gradient-offset))
+  );
+}
+
+/* Syllable words paint their own gradient; one clipped to the line would paint the glyphs twice. */
+.spicy-lyrics .SpicyLyricsScrollContainer[data-lyrics-type="Syllable"] .line.Active {
+  background-image: none;
+}
+
+.spicy-lyrics .line.NotSung,
+.spicy-lyrics .line.NotSung .word,
+.spicy-lyrics .line.NotSung .letter {
+  text-shadow: 0 0 var(--BlurAmount, 0)
+    color-mix(in srgb, var(--spicy-text) calc(var(--gradient-alpha-end) * 100%), transparent);
+}
+
+.spicy-lyrics .line.Sung,
+.spicy-lyrics .line.Sung .word,
+.spicy-lyrics .line.Sung .letter {
+  text-shadow: 0 0 var(--BlurAmount, 0)
+    color-mix(in srgb, var(--spicy-text) calc(var(--gradient-alpha) * 100%), transparent);
+}
+
+.spicy-lyrics .line {
+  --BlurAmount: 0px;
+  --Vocal-NotSung-opacity: 0.51;
+  --Vocal-Sung-opacity: 0.497;
+  --Vocal-Hover-opacity: 1;
+  --gradient-degrees: 180deg !important;
+  --gradient-alpha-end: 0.35 !important;
+  --lyrics-line-height: 1.1818181818;
+
+  letter-spacing: 0;
+  line-height: var(--lyrics-line-height);
+  direction: ltr;
+}
+
+.spicy-lyrics .line.rtl {
+  direction: rtl;
+  transform-origin: right center;
+}
+
+.spicy-lyrics .line.rtl .word,
+.spicy-lyrics .line.rtl .letter {
+  --gradient-degrees: -90deg !important;
+}
+
+.spicy-lyrics .line.rtl,
+.spicy-lyrics .line.rtl .word,
+.spicy-lyrics .line.rtl .letter,
+.spicy-lyrics .line.rtl .letterGroup {
+  --bottom: 1.25cqw;
+  --top: 1.15cqw;
+  padding-bottom: var(--bottom);
+  padding-top: var(--top);
+  margin-bottom: calc(var(--bottom) * -1 * 2);
+  margin-top: calc(var(--top) * -1 * 2);
+}
+
+.spicy-lyrics .line .word,
+.spicy-lyrics .line .letterGroup {
+  transform-origin: center center;
+}
+
+.spicy-lyrics .line .word.PartOfWord,
+.spicy-lyrics .line .letterGroup.PartOfWord {
+  transform-origin: right center;
+}
+
+.spicy-lyrics .line :is(.word, .letterGroup).PartOfWord + :is(.word, .letterGroup).PartOfWord {
+  transform-origin: center center;
+}
+
+.spicy-lyrics .line :is(.word, .letterGroup).PartOfWord + :is(.word, .letterGroup):not(.PartOfWord) {
+  transform-origin: left center;
+}
+
+.spicy-lyrics .line.rtl :is(.word, .letterGroup).PartOfWord {
+  transform-origin: left center;
+}
+
+.spicy-lyrics .line.rtl :is(.word, .letterGroup).PartOfWord + :is(.word, .letterGroup) {
+  transform-origin: right center;
+}
+
+.spicy-lyrics .line .word,
+.spicy-lyrics .line .letter,
+.spicy-lyrics .line .letterGroup {
+  --text-shadow-blur-radius: 4px;
+  --text-shadow-opacity: 0%;
+}
+
+.spicy-lyrics .line:not(.musical-line) .word,
+.spicy-lyrics .line .letter,
+.spicy-lyrics .line .letterGroup {
+  display: inline-block;
+}
+
+/* A whitespace-only letter would collapse to a 0px inline-block and glue words together. */
+.spicy-lyrics .line .letter.SpaceLetter {
+  white-space: pre;
+  min-width: 0.3ch;
+}
+
+.spicy-lyrics .line.Active,
+.spicy-lyrics .line.Active .word,
+.spicy-lyrics .line.Active .letter,
+.spicy-lyrics .line.Active .letterGroup {
+  text-shadow: 0 0 var(--text-shadow-blur-radius)
+    color-mix(in srgb, var(--spicy-text) var(--text-shadow-opacity), transparent);
+}
+
+.spicy-lyrics .line.bg-line .word,
+.spicy-lyrics .line.bg-line .letterGroup .letter {
+  --gradient-alpha: 0.6;
+  --gradient-alpha-end: 0.3;
+}
+
+.spicy-lyrics .line.OppositeAligned {
+  justify-content: flex-end;
+  text-align: end;
+  column-gap: 0.32ch;
+}
+
+.spicy-lyrics .line.OppositeAligned :is(.word, .letterGroup):not(.PartOfWord, .dot, .LastWordInLine)::after {
+  margin-right: 0;
+}
+
+.spicy-lyrics .line.Sung {
+  opacity: var(--Vocal-Sung-opacity);
+  --gradient-position: 100% !important;
+}
+
+.spicy-lyrics .line.NotSung {
+  opacity: var(--Vocal-NotSung-opacity);
+  --gradient-position: -20% !important;
+}
+
+.spicy-lyrics .line:is(.NotSung, .Sung):hover,
+.spicy-lyrics .line:is(.NotSung, .Sung):hover :is(.word, .letter) {
+  opacity: var(--Vocal-Hover-opacity, 1) !important;
+  --BlurAmount: 0px !important;
+}
+
+.spicy-lyrics .line :is(.word, .letterGroup):not(.PartOfWord, .dot, .LastWordInLine)::after {
+  content: "";
+  margin-right: 0.32ch;
+}
+
+.spicy-lyrics .line.NotSung .word,
+.spicy-lyrics .line.NotSung .letter {
+  --text-shadow-blur-radius: 4px !important;
+  --text-shadow-opacity: 0% !important;
+  --gradient-position: -20% !important;
+}
+
+.spicy-lyrics .word-group {
+  display: inline-flex;
+  white-space: nowrap;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.spicy-lyrics .OppositeAligned .word-group {
+  justify-content: flex-end;
+}
+
+.spicy-lyrics .line.Sung .word,
+.spicy-lyrics .line.Sung .letter {
+  --gradient-position: 100% !important;
+}
+
+.spicy-lyrics .line .letterGroup {
+  display: inline-flex;
+}
+
+.spicy-lyrics .line.bg-line {
+  margin: -1cqw 0 1cqw !important;
+}
+
+.spicy-lyrics .line.bg-line,
+.spicy-lyrics .line.bg-line .word,
+.spicy-lyrics .line.bg-line .letterGroup,
+.spicy-lyrics .line.bg-line .letterGroup .letter {
+  --font-size: calc(var(--DefaultLyricsSize) * 0.75);
+  font-size: var(--font-size);
+  font-weight: 600;
+}
+
+.spicy-lyrics .line.Active {
+  opacity: 1;
+  --BlurAmount: 0px !important;
+}
+
+.spicy-lyrics .line.Active :is(.word, .letterGroup, .letterGroup .letter) {
+  opacity: 1;
+}
+
+.spicy-lyrics .line:not(.musical-line) {
+  margin: var(--SpicyLyrics-LineSpacing, 1cqw 0);
+}
+
+/* Line-synced lyrics glow and scale the whole line. */
+.spicy-lyrics .SpicyLyricsScrollContainer[data-lyrics-type="Line"] .line {
+  --text-shadow-blur-radius: 4px;
+  --text-shadow-opacity: 0%;
+  transform-origin: left center;
+  transition: scale 0.2s cubic-bezier(0.37, 0, 0.63, 1), opacity 0.2s cubic-bezier(0.37, 0, 0.63, 1);
+  margin: var(--SpicyLyrics-LineSpacing, 2cqw 0);
+}
+
+.spicy-lyrics .SpicyLyricsScrollContainer[data-lyrics-type="Line"] .line:not(.Active) {
+  --text-shadow-blur-radius: 4px !important;
+  --text-shadow-opacity: 0% !important;
+}
+
+.spicy-lyrics .SpicyLyricsScrollContainer[data-lyrics-type="Line"] .line.OppositeAligned {
+  transform-origin: right center;
+}
+
+.spicy-lyrics .SpicyLyricsScrollContainer[data-lyrics-type="Line"] .line.Active:not(.musical-line) {
+  scale: 1.05;
+}
+
+/* Duet lines lean away from the opposite side. */
+.spicy-lyrics .SpicyLyricsScrollContainer.HasDuetLines {
+  --DuetLineInset: 5cqw;
+}
+
+.spicy-lyrics .SpicyLyricsScrollContainer.HasDuetLines .line.OppositeAligned:not(.rtl) {
+  padding-left: var(--DuetLineInset);
+}
+
+.spicy-lyrics .SpicyLyricsScrollContainer.HasDuetLines .line:not(.OppositeAligned, .rtl) {
+  padding-right: var(--DuetLineInset);
+}
+
+.spicy-lyrics .SpicyLyricsScrollContainer.HasDuetLines.HasRtlLines .line.OppositeAligned.rtl {
+  padding-right: var(--DuetLineInset);
+}
+
+.spicy-lyrics .SpicyLyricsScrollContainer.HasDuetLines.HasRtlLines .line.rtl:not(.OppositeAligned) {
+  padding-left: var(--DuetLineInset);
+}
+
+.spicy-lyrics .SpicyLyricsScrollContainer:not(.HasDuetLines) .line {
+  padding-right: 5cqw;
+}
+
+.spicy-lyrics .SpicyLyricsScrollContainer:not(.HasDuetLines) .line.rtl {
+  padding-left: 5cqw;
+}
+
+/* Interlude dots: collapsed to nothing until their gap plays. */
+.spicy-lyrics .line.musical-line {
+  transition: transform 0.14s, opacity 0.14s;
+  position: relative;
+  transform-origin: center center;
+  z-index: -1;
+  opacity: 0;
+  height: 0;
+  line-height: 0;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+.spicy-lyrics .line.musical-line .dotGroup {
+  --dot-gap: clamp(0.005rem, 1.7cqw, 0.18rem);
+  display: flex;
+  flex-direction: row;
+  gap: var(--dot-gap);
+  transition: scale 0.3s;
+  transform-origin: center center;
+  scale: 1;
+}
+
+.spicy-lyrics .line.musical-line:is(.pre-hidden, :not(.Active)) .dotGroup {
+  transition: scale 0.4s
+    linear(
+      0,
+      -0.006 9.4%,
+      -0.029 18%,
+      -0.157 43.3%,
+      -0.185 51.4%,
+      -0.189 55.9%,
+      -0.182 60%,
+      -0.163 63.9%,
+      -0.133 67.6%,
+      -0.074 72.3%,
+      0.006 76.7%,
+      0.238 85%,
+      0.566 92.7%,
+      1
+    );
+  scale: 0;
+}
+
+.spicy-lyrics .line.musical-line .dotGroup .dot {
+  --font-size: calc(var(--DefaultLyricsSize) * 1.3);
+  --opacity-size: 0.35;
+  border-radius: 50%;
+  scale: 0.75;
+  font-size: var(--font-size);
+  opacity: var(--opacity-size);
+  --gradient-position: 100%;
+  line-height: 0.65;
+}
+
+.spicy-lyrics .line.musical-line.Active {
+  opacity: 1;
+  overflow: visible;
+  height: auto;
+  line-height: var(--lyrics-line-height);
+  margin: var(--SpicyLyrics-LineSpacing, 1cqw 0);
+}
+
+/* The rounded highlight behind a hovered line. */
+.spicy-lyrics .line:not(.musical-line)::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  transform: translate(calc((0.25cqw * 2) * -1), -50%);
+  width: calc(100% + 0.25cqw * 2);
+  height: calc(100% + 0.85cqw * 2);
+  background-color: color-mix(in srgb, var(--spicy-text) 10%, transparent);
+  backdrop-filter: none;
+  opacity: 0;
+  scale: 0.9;
+  border-radius: 16px;
+  transition: opacity 0.25s ease, backdrop-filter 0.25s ease, scale 0.4s
+    linear(
+      0,
+      0.013 1%,
+      0.051 2.2%,
+      0.404 9.8%,
+      0.51 12.6%,
+      0.602 15.5%,
+      0.683 18.7%,
+      0.754 22.2%,
+      0.813 26%,
+      0.861 30.2%,
+      0.9 34.8%,
+      0.931 40%,
+      0.972 52.7%,
+      0.992 70.2%,
+      1
+    );
+  transform-origin: center center;
+  pointer-events: none;
+}
+
+.spicy-lyrics .line:not(.musical-line):hover::before {
+  opacity: 1;
+  scale: 1.05;
+  backdrop-filter: blur(2px);
+}

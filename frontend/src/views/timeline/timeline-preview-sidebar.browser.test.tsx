@@ -1,7 +1,7 @@
 import { wireFrameLoop } from "@/lib/frame-loop-wiring";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
-import { useSettingsStore } from "@/stores/settings";
+import { DEFAULTS, useSettingsStore } from "@/stores/settings";
 import { addGlobalAllowedConsolePattern } from "@/test/console-guard";
 import { createLine } from "@/test/factories";
 import { render } from "@/test/render";
@@ -45,6 +45,8 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
+  // Most cases here exercise Braccato's alternates and clock, so they pin it over the Spicy default.
+  useSettingsStore.setState({ previewRenderer: "braccato" });
   disposeWiring = wireFrameLoop();
 });
 
@@ -60,6 +62,18 @@ describe("TimelinePreviewSidebar", () => {
     useProjectStore.setState({ lines: [] });
     const screen = await render(<TimelinePreviewSidebar />);
     await expect.element(screen.getByText("No synced content")).toBeInTheDocument();
+    expect(screen.container.querySelector("braccato-lyrics")).toBeNull();
+  });
+
+  it("renders the lyrics through Spicy Lyrics in the sidebar layout by default", async () => {
+    useSettingsStore.setState({ previewRenderer: DEFAULTS.previewRenderer });
+    seedThreeLines();
+    const screen = await render(<TimelinePreviewSidebar />);
+
+    const sidebar = screen.container.querySelector("aside");
+    await expect.poll(() => sidebar?.querySelectorAll(".spicy-lyrics .line").length).toBeGreaterThan(0);
+    expect(sidebar?.querySelector("[data-lyrics-layout='sidebar'] .spicy-lyrics")).not.toBeNull();
+    expect(sidebar?.textContent).toContain("second line now");
     expect(screen.container.querySelector("braccato-lyrics")).toBeNull();
   });
 

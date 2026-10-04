@@ -6,19 +6,24 @@ from autolyrics.domain.lyrics import Line, Lyrics
 class OffsetEstimator:
     """How far given times sit from where an alignment heard the words."""
 
-    def __init__(self, confident: float = 0.1, neighbours: int = 4, min_words: int = 10):
+    def __init__(self, confident: float = 0.1, anchor: float = 0.3, neighbours: int = 4,
+                 min_words: int = 10):
         self._confident = confident  # no misplaced word in the benchmarks scored above this
+        # A line may only move its window on a word the aligner is sure of: in a repeated chorus
+        # the whole-song pass can lock onto the wrong repeat with scores of 0.1-0.25.
+        self._anchor = anchor
         self._neighbours = neighbours
         self._min_words = min_words
 
     def local_line_offsets(self, lines: list[Line]) -> list[float]:
-        """Per line, line time vs. its first confidently aligned word, as a median over the
+        """Per line, line time vs. its first surely aligned word, as a median over the
         neighbouring lines: a music video that inserts a skit shifts everything after it, so the
-        offset changes partway through the song. Empty when there is too little to go on."""
+        offset changes partway through the song. Lines with no sure word around them take the
+        song-wide offset. Empty when there is too little to go on."""
         diffs: list[float | None] = []
         for line in lines:
             first = next((w for w in line.words
-                          if w.timed and (w.confidence or 0) >= self._confident), None)
+                          if w.timed and (w.confidence or 0) >= self._anchor), None)
             diffs.append(first.begin - line.begin
                          if first is not None and line.begin is not None else None)
         known = [d for d in diffs if d is not None]

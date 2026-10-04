@@ -106,7 +106,8 @@ const SETTING_CONTROLS: Record<SettingId, SettingControl> = {
   previewRenderer: {
     kind: "select",
     options: [
-      { value: "braccato", label: "Braccato (default)" },
+      { value: "spicy", label: "Spicy Lyrics (default)" },
+      { value: "braccato", label: "Braccato" },
       { value: "am-lyrics", label: "am-lyrics" },
     ],
   },

@@ -13,8 +13,8 @@ describe("preview renderer settings", () => {
     useSettingsStore.setState({ ...DEFAULTS });
   });
 
-  it("defaults to braccato as the preview renderer", () => {
-    expect(useSettingsStore.getState().previewRenderer).toBe("braccato");
+  it("defaults to spicy as the preview renderer", () => {
+    expect(useSettingsStore.getState().previewRenderer).toBe("spicy");
   });
 
   it("defaults audioScrubPreview to true", () => {
@@ -26,10 +26,10 @@ describe("preview renderer settings", () => {
     expect(useSettingsStore.getState().previewRenderer).toBe("am-lyrics");
   });
 
-  it("resetToDefaults restores the renderer to braccato", () => {
+  it("resetToDefaults restores the renderer to spicy", () => {
     useSettingsStore.getState().set("previewRenderer", "am-lyrics");
     useSettingsStore.getState().resetToDefaults();
-    expect(useSettingsStore.getState().previewRenderer).toBe("braccato");
+    expect(useSettingsStore.getState().previewRenderer).toBe("spicy");
   });
 });
 

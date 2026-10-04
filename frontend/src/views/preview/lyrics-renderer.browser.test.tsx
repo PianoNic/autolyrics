@@ -1,5 +1,5 @@
 import { wireFrameLoop } from "@/lib/frame-loop-wiring";
-import { useSettingsStore } from "@/stores/settings";
+import { DEFAULTS, useSettingsStore } from "@/stores/settings";
 import { addGlobalAllowedConsolePattern } from "@/test/console-guard";
 import { render } from "@/test/render";
 import { buildSyncedTtml } from "@/test/ttml-fixtures";
@@ -8,10 +8,19 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 // -- Helpers ------------------------------------------------------------------
 
-async function waitForElement(container: Element, tag: "braccato-lyrics" | "am-lyrics"): Promise<Element> {
-  await expect.poll(() => container.querySelector(tag)).not.toBeNull();
-  const el = container.querySelector(tag);
-  if (!el) throw new Error(`${tag} element not rendered`);
+type Engine = "spicy" | "braccato" | "am-lyrics";
+
+// The element each engine puts the layout classes on.
+const ENGINE_SELECTOR: Record<Engine, string> = {
+  spicy: ".spicy-lyrics",
+  braccato: "braccato-lyrics",
+  "am-lyrics": "am-lyrics",
+};
+
+async function waitForElement(container: Element, selector: string): Promise<Element> {
+  await expect.poll(() => container.querySelector(selector)).not.toBeNull();
+  const el = container.querySelector(selector);
+  if (!el) throw new Error(`${selector} element not rendered`);
   return el;
 }
 
@@ -33,6 +42,26 @@ afterEach(() => {
 // -- Tests --------------------------------------------------------------------
 
 describe("LyricsRenderer", () => {
+  it("renders Spicy Lyrics by default", async () => {
+    useSettingsStore.setState({ previewRenderer: DEFAULTS.previewRenderer });
+    const screen = await render(<LyricsRenderer ttmlString={buildSyncedTtml()} durationSeconds={35} />);
+
+    await waitForElement(screen.container, ".spicy-lyrics .line");
+    expect(screen.container.querySelector("braccato-lyrics")).toBeNull();
+    expect(screen.container.querySelector("am-lyrics")).toBeNull();
+  });
+
+  it("swaps from Spicy Lyrics to Braccato when the setting changes", async () => {
+    useSettingsStore.setState({ previewRenderer: "spicy" });
+    const screen = await render(<LyricsRenderer ttmlString={buildSyncedTtml()} durationSeconds={35} />);
+    await waitForElement(screen.container, ".spicy-lyrics");
+
+    useSettingsStore.setState({ previewRenderer: "braccato" });
+
+    await waitForElement(screen.container, "braccato-lyrics");
+    await expect.poll(() => screen.container.querySelector(".spicy-lyrics")).toBeNull();
+  });
+
   it("renders Braccato when the preview renderer setting is braccato", async () => {
     useSettingsStore.setState({ previewRenderer: "braccato" });
     const screen = await render(<LyricsRenderer ttmlString={buildSyncedTtml()} durationSeconds={35} />);
@@ -61,21 +90,21 @@ describe("LyricsRenderer", () => {
   });
 
   describe("layout", () => {
-    it.each(["braccato", "am-lyrics"] as const)("centres a page-width column by default with %s", async (engine) => {
+    it.each(["spicy", "braccato", "am-lyrics"] as const)("centres a page-width column by default with %s", async (engine) => {
       useSettingsStore.setState({ previewRenderer: engine });
       const screen = await render(<LyricsRenderer ttmlString={buildSyncedTtml()} durationSeconds={35} />);
-      const el = await waitForElement(screen.container, engine === "braccato" ? "braccato-lyrics" : "am-lyrics");
+      const el = await waitForElement(screen.container, ENGINE_SELECTOR[engine]);
 
       expect(el.classList).toContain("max-w-3xl");
       expect(el.classList).toContain("px-6");
     });
 
-    it.each(["braccato", "am-lyrics"] as const)("fills a narrow sidebar with %s", async (engine) => {
+    it.each(["spicy", "braccato", "am-lyrics"] as const)("fills a narrow sidebar with %s", async (engine) => {
       useSettingsStore.setState({ previewRenderer: engine });
       const screen = await render(
         <LyricsRenderer ttmlString={buildSyncedTtml()} durationSeconds={35} layout="sidebar" />,
       );
-      const el = await waitForElement(screen.container, engine === "braccato" ? "braccato-lyrics" : "am-lyrics");
+      const el = await waitForElement(screen.container, ENGINE_SELECTOR[engine]);
 
       expect(el.classList).not.toContain("max-w-3xl");
       expect(el.classList).not.toContain("px-6");

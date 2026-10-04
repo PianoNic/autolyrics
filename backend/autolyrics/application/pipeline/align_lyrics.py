@@ -28,8 +28,7 @@ class AlignLyricsHandler(ICommandHandler[AlignLyricsCommand, Unit]):
     async def handle(self, command: AlignLyricsCommand) -> Unit:
         ctx = command.context
         if ctx.lyrics is None:
-            raise await ctx.reporter.fail(
-                Stage.ALIGN, "No lyrics found anywhere; transcription is not available yet")
+            raise await ctx.reporter.fail(Stage.ALIGN, "No lyrics to align")
         word_level = ctx.lyrics.sync_type.is_word_level
         await ctx.reporter.running(Stage.ALIGN, "Isolating vocals (Demucs)")
         started = time.time()
@@ -47,6 +46,11 @@ class AlignLyricsHandler(ICommandHandler[AlignLyricsCommand, Unit]):
             raise await ctx.reporter.fail(Stage.ALIGN, str(error)) from error
         finally:
             self._aligner.release()
+
+        if "transcription" in ctx.report:
+            # Machine-heard text: every word is a guess until someone has read it.
+            for word in ctx.lyrics.all_words:
+                word.flag("transcribed")
 
         if word_level:
             ctx.report["offset_check"] = result

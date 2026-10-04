@@ -40,7 +40,7 @@ describe("PreviewPanel", () => {
     const screen = await render(<PreviewPanel />);
 
     await expect
-      .poll(() => screen.container.querySelector(".blyrics--line")?.textContent ?? "")
+      .poll(() => screen.container.querySelector(".spicy-lyrics .line")?.textContent ?? "")
       .toContain("Edited in Export");
   });
 });

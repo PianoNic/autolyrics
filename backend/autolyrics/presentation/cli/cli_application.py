@@ -61,6 +61,8 @@ class CliApplication:
         run.add_argument("--lyrics", type=Path, help="use this TTML/LRC/QRC/TXT instead of searching")
         run.add_argument("--job-id", help="reuse or name the job directory under the jobs folder")
         run.add_argument("--no-llm", action="store_true", help="skip the DeepSeek clean-up")
+        run.add_argument("--transcribe", action="store_true",
+                         help="ignore the lyrics sources and transcribe the vocals with Whisper")
         run.add_argument("-v", "--verbose", action="store_true")
 
         serve = commands.add_parser("serve", help="run the local web app")
@@ -76,7 +78,7 @@ class CliApplication:
             options = JobOptions(url=args.url, title=args.title, artist=args.artist,
                                  album=args.album,
                                  lyrics_file=str(args.lyrics) if args.lyrics else None,
-                                 skip_llm=args.no_llm)
+                                 skip_llm=args.no_llm, transcribe=args.transcribe)
             created = await container.mediator.send(
                 CreateJobCommand(options, enqueue=False, job_id=args.job_id))
             result = await container.mediator.send(RunJobCommand(created.id))

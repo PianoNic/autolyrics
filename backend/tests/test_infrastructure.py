@@ -78,3 +78,23 @@ class TestFileJobRepository:
         for bad in ("..", "a/b", "a\\b", ""):
             with pytest.raises(JobNotFoundError):
                 repository.get(bad)
+
+
+class TestJapanese:
+    def test_romaji_reads_kanji_as_japanese(self):
+        from autolyrics.infrastructure.ml.japanese_text import JapaneseText
+
+        normalizer = AlignmentTextNormalizer(set(string.ascii_lowercase) | {"'"}, JapaneseText())
+        assert normalizer.normalize("太陽", "ja") == "taiyou"
+        assert normalizer.normalize("Spinning", "ja") == "spinning"
+
+    def test_segmenter_splits_words_and_keeps_the_display(self):
+        from autolyrics.domain.lyrics import Line, Lyrics, Word
+        from autolyrics.infrastructure.ml.japanese_text import JapaneseText, WordSegmenter
+
+        line = Line(words=Word.tokenize("ハエの羽音 振り払い"))
+        lyrics = Lyrics(lines=[line])
+        assert WordSegmenter(JapaneseText()).segment(lyrics, "ja") == 2
+        assert [w.text for w in line.words] == ["ハエ", "の", "羽音 ", "振り", "払い"]
+        assert line.text == "ハエの羽音 振り払い"
+        assert WordSegmenter(JapaneseText()).segment(Lyrics(lines=[line]), "de") == 0

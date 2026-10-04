@@ -25,6 +25,15 @@ Based on [Composer](https://github.com/better-lyrics/composer) by Better Lyrics,
 - Node 24 and pnpm for the frontend
 - A DeepSeek API key for the clean-up step (only lyrics text is sent, never audio)
 
+## Credits
+
+- [Composer](https://github.com/better-lyrics/composer) by Better Lyrics (AGPL-3.0): the editor
+  this frontend is forked from.
+- [Spicy Lyrics](https://github.com/Spikerko/spicy-lyrics) by Spikerko (AGPL-3.0): the default
+  Preview renderer in `frontend/src/views/preview/spicy/` is adapted from its lyric layout,
+  animator and styles. Its spring model is in turn a port of
+  [spr](https://github.com/Fraktality/spr) by Fraktality (MIT).
+
 ## License
 
 AGPL-3.0, see `LICENSE`.

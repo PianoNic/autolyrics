@@ -29,7 +29,7 @@ class YouTubeLink:
 class RetryPolicy:
     """Retries transient HTTP failures: dropped connections and 5xx answers."""
 
-    def __init__(self, attempts: int = 3, backoff: float = 2.0):
+    def __init__(self, attempts: int = 4, backoff: float = 3.0):
         self._attempts = attempts
         self._backoff = backoff
 

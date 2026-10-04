@@ -86,3 +86,31 @@ describe("previewSidebarWidth", () => {
     expect(useSettingsStore.getState().previewSidebarWidth).toBe(480);
   });
 });
+
+describe("previewRenderer migration", () => {
+  it("moves a pre-Spicy blob still on the old Braccato default to Spicy", async () => {
+    await rehydrateAt(6, legacyBlob({ previewRenderer: "braccato" }));
+    expect(useSettingsStore.getState().previewRenderer).toBe("spicy");
+  });
+
+  it("keeps a deliberate am-lyrics pick from before Spicy", async () => {
+    await rehydrateAt(6, legacyBlob({ previewRenderer: "am-lyrics" }));
+    expect(useSettingsStore.getState().previewRenderer).toBe("am-lyrics");
+  });
+
+  it("keeps Braccato when it was picked after Spicy became the default", async () => {
+    await rehydrateAt(7, legacyBlob({ previewRenderer: "braccato" }));
+    expect(useSettingsStore.getState().previewRenderer).toBe("braccato");
+  });
+
+  it("falls back to Spicy for a renderer this build does not know", () => {
+    const migrated = migrateSettingsForTest(legacyBlob({ previewRenderer: "retired-engine" }), 7) as {
+      previewRenderer: string;
+    };
+    expect(migrated.previewRenderer).toBe("spicy");
+  });
+
+  it("invariant: a fresh profile renders the preview with Spicy", () => {
+    expect(DEFAULTS.previewRenderer).toBe("spicy");
+  });
+});

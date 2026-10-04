@@ -1,6 +1,8 @@
 import re
 from typing import ClassVar
 
+from autolyrics.infrastructure.ml.japanese_text import JapaneseText
+
 
 class AlignmentTextNormalizer:
     """Spells a lyric word in the aligner's a-z alphabet: "Größe" -> "grosse", "187" ->
@@ -12,13 +14,17 @@ class AlignmentTextNormalizer:
         "en": {"&": " and ", "+": " plus ", "%": " percent ", "$": " dollar ", "€": " euro "},
     }
 
-    def __init__(self, alphabet: set[str]):
+    def __init__(self, alphabet: set[str], japanese: "JapaneseText | None" = None):
         self._alphabet = alphabet
+        self._japanese = japanese
 
     def normalize(self, word: str, language: str) -> str:
         from unidecode import unidecode
 
         text = word.lower()
+        if self._japanese is not None and self._japanese.contains_japanese(text):
+            # Kanji have Japanese readings; a generic romaniser would read them as Chinese.
+            text = self._japanese.romaji(text)
         symbols = self.SYMBOLS["de" if language.startswith("de") else "en"]
         for symbol, spoken in symbols.items():
             text = text.replace(symbol, spoken)
