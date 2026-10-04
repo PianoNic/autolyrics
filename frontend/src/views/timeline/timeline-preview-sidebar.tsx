@@ -1,6 +1,6 @@
 import { useExportTtml } from "@/hooks/use-export-ttml";
 import { PREVIEW_SIDEBAR_WIDTH } from "@/utils/preview-sidebar-width";
-import { LyricsRenderer } from "@/views/preview/lyrics-renderer";
+import { SpicyRenderer } from "@/views/preview/spicy/spicy-renderer";
 import { usePreviewSidebarResize } from "@/views/timeline/use-preview-sidebar-resize";
 import { useId } from "react";
 
@@ -46,7 +46,7 @@ const PreviewSidebarShell: React.FC<PreviewSidebarShellProps> = ({ children }) =
 };
 
 const TimelinePreviewSidebar: React.FC = () => {
-  const { content, duration, syncedLineCount } = useExportTtml();
+  const { content, syncedLineCount } = useExportTtml();
 
   return (
     <PreviewSidebarShell>
@@ -55,7 +55,7 @@ const TimelinePreviewSidebar: React.FC = () => {
           <span className="text-sm text-composer-text-muted">No synced content</span>
         </div>
       ) : (
-        <LyricsRenderer ttmlString={content} durationSeconds={duration} layout="sidebar" />
+        <SpicyRenderer ttmlString={content} layout="sidebar" />
       )}
     </PreviewSidebarShell>
   );

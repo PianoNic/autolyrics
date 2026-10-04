@@ -4,7 +4,6 @@ import { Button } from "@/ui/button";
 import { IconButton } from "@/ui/icon-button";
 import { Popover } from "@/ui/popover";
 import { Slider } from "@/ui/slider";
-import { VocalSeparationDropdown } from "@/ui/vocal-separation-dropdown";
 import { cn } from "@/utils/cn";
 import { formatTime } from "@/utils/format-time";
 import { IconPlayerPauseFilled, IconPlayerPlayFilled, IconVolume, IconVolume2, IconVolume3 } from "@tabler/icons-react";
@@ -193,7 +192,6 @@ const AudioPlayer: React.FC = () => {
         preservePitch={preservePitch}
         onChangePreservePitch={(value) => setSetting("preservePitch", value)}
       />
-      <VocalSeparationDropdown />
     </div>
   );
 };

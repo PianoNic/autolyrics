@@ -2,10 +2,8 @@
  * @vitest-environment node
  */
 import type { LinkGroup } from "@/domain/group/template";
-import { commitGesture } from "@/domain/sync/commit-gesture";
 import type { WordTiming } from "@/domain/word/timing";
 import { useProjectStore } from "@/stores/project";
-import { nudgeLineBegin } from "@/utils/timing/line-timing";
 import { nudgeWordBegin, setWordBegin } from "@/utils/timing/word-timing";
 import { beforeEach, describe, expect, it } from "vitest";
 
@@ -217,124 +215,6 @@ describe("updateLinesWithHistory · propagateToSiblings: false", () => {
   });
 });
 
-describe("instance resync · issue #96 reproduction", () => {
-  // Replays useSyncHandlers.handleTap through the real commitGesture owner.
-  function tapResync(lineId: string, wordIndex: number, begin: number) {
-    const lines = useProjectStore.getState().lines;
-    const lineIndex = lines.findIndex((l) => l.id === lineId);
-    const commit = commitGesture(lines, "tap-word", {
-      cursor: { lineIndex, wordIndex },
-      jumped: false,
-      time: begin,
-      defaultWordDuration: 0.3,
-    });
-    if (!commit) throw new Error("expected a commit");
-    useProjectStore
-      .getState()
-      .updateLinesWithHistory(commit.lineUpdates, { deriveText: false, propagateToSiblings: false });
-  }
-
-  it("resyncing instance A word-by-word leaves instance B's timing untouched", () => {
-    seedTwoWordSyncedInstances();
-
-    tapResync("a0", 0, 0.5);
-    tapResync("a0", 1, 1.0);
-    tapResync("a0", 2, 1.5);
-
-    expect(getLine("a1").words).toEqual(INSTANCE_B_WORDS);
-  });
-
-  it("the resynced instance A keeps its full word set with the new timing", () => {
-    seedTwoWordSyncedInstances();
-
-    tapResync("a0", 0, 0.5);
-    tapResync("a0", 1, 1.0);
-    tapResync("a0", 2, 1.5);
-
-    expect(getLine("a0").words).toEqual([
-      { text: "I ", begin: 0.5, end: 1.0 },
-      { text: "love ", begin: 1.0, end: 1.5 },
-      { text: "you", begin: 1.5, end: 1.8 },
-    ]);
-  });
-
-  it("resyncing does not squash a third instance either", () => {
-    useProjectStore.getState().addGroup(seedGroup("g1"));
-    const cWords: WordTiming[] = [
-      { text: "I ", begin: 30, end: 30.6 },
-      { text: "love ", begin: 30.6, end: 31.2 },
-      { text: "you", begin: 31.2, end: 31.8 },
-    ];
-    useProjectStore.setState({
-      lines: [
-        {
-          id: "a0",
-          text: "I love you",
-          agentId: "v1",
-          groupId: "g1",
-          instanceIdx: 0,
-          templateLineIdx: 0,
-          words: INSTANCE_A_WORDS.map((w) => ({ ...w })),
-        },
-        {
-          id: "a1",
-          text: "I love you",
-          agentId: "v1",
-          groupId: "g1",
-          instanceIdx: 1,
-          templateLineIdx: 0,
-          words: INSTANCE_B_WORDS.map((w) => ({ ...w })),
-        },
-        {
-          id: "a2",
-          text: "I love you",
-          agentId: "v1",
-          groupId: "g1",
-          instanceIdx: 2,
-          templateLineIdx: 0,
-          words: cWords.map((w) => ({ ...w })),
-        },
-      ],
-    });
-
-    tapResync("a0", 0, 0.5);
-    tapResync("a0", 1, 1.0);
-    tapResync("a0", 2, 1.5);
-
-    expect(getLine("a1").words).toEqual(INSTANCE_B_WORDS);
-    expect(getLine("a2").words).toEqual(cWords);
-  });
-
-  it("a partial re-tap keeps the source's later words and leaves the sibling intact", () => {
-    seedTwoWordSyncedInstances();
-
-    tapResync("a0", 0, 0.5);
-
-    expect(getLine("a0").words).toHaveLength(3);
-    expect(getLine("a0").words?.[0].begin).toBe(0.5);
-    expect(getLine("a1").words).toEqual(INSTANCE_B_WORDS);
-    expect(getLine("a1").words).toHaveLength(3);
-  });
-
-  it("preserve-in-place keeps the word count stable, so a propagating re-tap no longer squashes the sibling", () => {
-    seedTwoWordSyncedInstances();
-
-    // Regression guard for issue #96.
-    const lines = useProjectStore.getState().lines;
-    const commit = commitGesture(lines, "tap-word", {
-      cursor: { lineIndex: 0, wordIndex: 0 },
-      jumped: false,
-      time: 0.5,
-      defaultWordDuration: 0.3,
-    });
-    if (!commit) throw new Error("expected a commit");
-    useProjectStore.getState().updateLinesWithHistory(commit.lineUpdates, { deriveText: false });
-
-    expect(getLine("a1").words).toHaveLength(3);
-    expect(getLine("a1").words).toEqual(INSTANCE_B_WORDS);
-  });
-});
-
 describe("propagateToSiblings: false · edge cases", () => {
   it("leaves a detached sibling untouched", () => {
     seedTwoWordSyncedInstances();
@@ -527,39 +407,5 @@ describe("timing nudges · do not propagate to siblings", () => {
     setWordBegin(useProjectStore.getState().lines, 0, 0, 0.2, useProjectStore.getState().updateLineWithHistory);
 
     expect(getLine("a1").words?.[1].text).toBe("LOVE ");
-  });
-
-  it("nudgeLineBegin on one line-synced instance leaves the sibling's bounds untouched", () => {
-    useProjectStore.setState({
-      groups: [seedGroup("g1")],
-      lines: [
-        {
-          id: "a0",
-          text: "I love you",
-          agentId: "v1",
-          groupId: "g1",
-          instanceIdx: 0,
-          templateLineIdx: 0,
-          begin: 30,
-          end: 32,
-        },
-        {
-          id: "a1",
-          text: "I love you",
-          agentId: "v1",
-          groupId: "g1",
-          instanceIdx: 1,
-          templateLineIdx: 0,
-          begin: 60,
-          end: 62,
-        },
-      ],
-      isDirtySinceHistory: true,
-    });
-
-    nudgeLineBegin(useProjectStore.getState().lines, 0, 0.5, useProjectStore.getState().updateLineWithHistory);
-
-    expect(getLine("a1").begin).toBe(60);
-    expect(getLine("a1").end).toBe(62);
   });
 });

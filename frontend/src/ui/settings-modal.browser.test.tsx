@@ -44,57 +44,21 @@ describe("SettingsModal", () => {
     it("opens on the target setting's section", async () => {
       allowConsole(/cannot be a descendant of/);
       allowConsole(/cannot contain a nested/);
-      useUIStore.getState().openSettings({ target: { setting: "youtubeBridge" } });
+      useUIStore.getState().openSettings({ target: { setting: "audioScrubPreview" } });
       await render(<SettingsModal isOpen onClose={() => {}} />);
-      expect(document.querySelector('[data-testid="bridge-section"]')).not.toBeNull();
+      expect(document.querySelector('[data-setting-id="audioScrubPreview"]')).not.toBeNull();
     });
 
     it("opens on General when there is no target", async () => {
       useUIStore.getState().openSettings();
       await render(<SettingsModal isOpen onClose={() => {}} />);
-      expect(document.querySelector('[data-testid="bridge-section"]')).toBeNull();
+      expect(document.querySelector('[data-setting-id="audioScrubPreview"]')).toBeNull();
     });
 
     it("writes section changes to the store", async () => {
       const screen = await render(<SettingsModal isOpen onClose={() => {}} />);
-      await screen.getByRole("button", { name: /Sync & Timing/ }).click();
+      await screen.getByRole("button", { name: /^Timing/ }).click();
       expect(useUIStore.getState().settingsSection).toBe("sync");
-    });
-  });
-
-  describe("Cobalt instance edit row", () => {
-    it("keeps focus on the URL input while typing", async () => {
-      allowConsole(/cannot be a descendant of/);
-      allowConsole(/cannot contain a nested/);
-      useSettingsStore.setState({
-        cobaltInstances: [{ id: "test-inst", label: "Self-hosted", url: "https://example.com" }],
-        selectedCobaltInstanceId: "test-inst",
-      });
-
-      const screen = await render(<SettingsModal isOpen onClose={() => {}} />);
-      await screen.getByRole("button", { name: /Advanced/i }).click();
-      await screen.getByRole("button", { name: /Self-hosted/i }).click();
-
-      const urlInput = document.querySelector<HTMLInputElement>('dialog input[type="url"]');
-      expect(urlInput).not.toBeNull();
-      if (!urlInput) throw new Error("URL input not rendered");
-
-      urlInput.focus();
-      expect(document.activeElement).toBe(urlInput);
-
-      const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
-      const setValue = (next: string) => {
-        nativeSetter?.call(urlInput, next);
-        urlInput.dispatchEvent(new Event("input", { bubbles: true }));
-      };
-
-      setValue("https://example.com/a");
-      expect(document.activeElement).toBe(urlInput);
-      setValue("https://example.com/ab");
-      expect(document.activeElement).toBe(urlInput);
-      setValue("https://example.com/abc");
-      expect(document.activeElement).toBe(urlInput);
-      expect(urlInput.value).toBe("https://example.com/abc");
     });
   });
 });
@@ -134,16 +98,8 @@ describe("SettingsModal target", () => {
     allowConsole(/cannot contain a nested/);
     useUIStore.getState().openSettings();
     await render(<SettingsModal isOpen onClose={() => {}} />);
-    useUIStore.getState().openSettings({ target: { setting: "youtubeBridge" } });
-    await expect.poll(() => row("youtubeBridge")?.hasAttribute("data-nudge")).toBe(true);
-  });
-
-  it("regression: the Try Bridge path lands on the bridge block", async () => {
-    allowConsole(/cannot be a descendant of/);
-    allowConsole(/cannot contain a nested/);
-    useUIStore.getState().openSettings({ target: { setting: "youtubeBridge" } });
-    await render(<SettingsModal isOpen onClose={() => {}} />);
-    await expect.poll(() => row("youtubeBridge")?.querySelector('[data-testid="bridge-section"]')).not.toBeNull();
+    useUIStore.getState().openSettings({ target: { setting: "audioScrubPreview" } });
+    await expect.poll(() => row("audioScrubPreview")?.hasAttribute("data-nudge")).toBe(true);
   });
 });
 

@@ -22,16 +22,14 @@ import {
   IconLayoutDistributeHorizontal,
   IconMagnet,
   IconMapPin,
-  IconTextPlus,
 } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo } from "react";
 
 interface TimelineHeaderProps {
-  onImportLyrics?: () => void;
   scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
 }
 
-const TimelineHeader: React.FC<TimelineHeaderProps> = ({ onImportLyrics, scrollContainerRef }) => {
+const TimelineHeader: React.FC<TimelineHeaderProps> = ({ scrollContainerRef }) => {
   const followEnabled = useTimelineStore((s) => s.followEnabled);
   const toggleFollow = useTimelineStore((s) => s.toggleFollow);
   const previewSidebarOpen = useTimelineStore((s) => s.previewSidebarOpen);
@@ -198,15 +196,6 @@ const TimelineHeader: React.FC<TimelineHeaderProps> = ({ onImportLyrics, scrollC
         >
           <IconMapPin size={16} />
         </TimelineToggleButton>
-
-        {/* Import lyrics */}
-        {onImportLyrics && (
-          <Button variant="ghost" size="sm" onClick={onImportLyrics} hasIcon className="opacity-60">
-            <IconTextPlus size={16} />
-            <span>Import</span>
-            {showHints && <InlineKeyBadge keys={getEffectiveKeysArray("timeline.importLyrics")} />}
-          </Button>
-        )}
 
         {/* Expand all unexpanded lines */}
         {hasUnexpandedLines && (

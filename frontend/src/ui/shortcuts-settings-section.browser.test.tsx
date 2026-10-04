@@ -8,8 +8,8 @@ describe("ShortcutsSettingsSection", () => {
   it("renders every scope heading from the registry", async () => {
     const screen = await render(<ShortcutsSettingsSection />);
     await expect.element(screen.getByText("General")).toBeInTheDocument();
-    await expect.element(screen.getByText("Sync Mode")).toBeInTheDocument();
     await expect.element(screen.getByText("Timeline Mode")).toBeInTheDocument();
+    expect(screen.container.textContent).not.toContain("Sync Mode");
     expect(screen.container.querySelector("input")).toBeNull();
   });
 

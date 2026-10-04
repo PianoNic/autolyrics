@@ -1,7 +1,7 @@
 import type { Agent } from "@/domain/agent/model";
 import { reconcileLine, type LyricLine } from "@/domain/line/model";
 import type { ProjectMetadata } from "@/domain/project/metadata";
-import { parseLyricsFile } from "@/utils/lyrics-parsers";
+import { parseTtml } from "@/utils/lyrics-parsers/ttml";
 import { generateTTML } from "@/utils/ttml";
 import { describe, expect, it } from "vitest";
 
@@ -61,7 +61,7 @@ describe("TTML alternate-language sidecars", () => {
 
     expect(ttml).toContain('<text for="L1"><span ttm:role="x-bg">Sky</span></text>');
     expect(ttml).not.toContain("stale");
-    const parsed = parseLyricsFile("song.ttml", ttml).lines[0];
+    const parsed = parseTtml(ttml).lines[0];
     expect(parsed.text).toBe("Hello");
     expect(parsed.translations?.en).toMatchObject({ text: "", backgroundText: "Sky" });
     expect(parsed.transliteration).toMatchObject({ text: "", backgroundText: "sora" });
@@ -108,14 +108,14 @@ describe("TTML alternate-language sidecars", () => {
     expect(ttml).toMatch(
       /<text for="L1"><span[^>]*>kyou<\/span> <span ttm:role="x-bg"><span[^>]*>sora<\/span> <\/span><span[^>]*>hi<\/span>/,
     );
-    const parsed = parseLyricsFile("song.ttml", ttml).lines[0];
+    const parsed = parseTtml(ttml).lines[0];
     expect(parsed.translations?.en.text).toBe("Right now");
     expect(parsed.translations?.en.backgroundText).toBe("Sky");
   });
 
   it("round-trips main and background alternate text", () => {
     const ttml = generateTTML({ metadata, agents, lines: [languageLine()] });
-    const parsed = parseLyricsFile("song.ttml", ttml).lines[0];
+    const parsed = parseTtml(ttml).lines[0];
     expect(parsed.translations?.en.text).toBe("Today");
     expect(parsed.translations?.en.backgroundText).toBe("Sky");
     expect(parsed.transliteration?.text).toBe("kyou hi");
@@ -137,7 +137,7 @@ describe("TTML alternate-language sidecars", () => {
     expect(ttml).toContain(">kyou</span> <span begin=");
     expect(ttml).toMatch(/>hi<\/span> {2}<span[^>]*>wa<\/span>/);
     expect(ttml).not.toMatch(/<span[^>]*>kyou hi<\/span>/);
-    const parsed = parseLyricsFile("song.ttml", ttml).lines[0];
+    const parsed = parseTtml(ttml).lines[0];
     expect(parsed.transliteration?.text).toBe("kyou hi  wa");
   });
 
@@ -152,7 +152,7 @@ describe("TTML alternate-language sidecars", () => {
 
     const ttml = generateTTML({ metadata, agents, lines: [line] });
     expect(ttml).toMatch(/>kyou<\/span><span[^>]*>hi<\/span>/);
-    const parsed = parseLyricsFile("song.ttml", ttml).lines[0];
+    const parsed = parseTtml(ttml).lines[0];
     expect(parsed.transliteration?.text).toBe("kyouhi");
     expect(parsed.words?.map((word) => word.transliteration)).toEqual(["kyou", "hi"]);
     expect(parsed.words?.[0].transliterationJoinerAfter).toBe("");
@@ -175,7 +175,7 @@ describe("TTML alternate-language sidecars", () => {
       '<text for="L1"><span begin="0:01.000" end="0:01.500">to-</span><span begin="0:01.500" end="0:02.000">do</span>',
     );
     expect(line).toEqual(before);
-    const parsed = parseLyricsFile("song.ttml", ttml).lines[0];
+    const parsed = parseTtml(ttml).lines[0];
     expect(parsed.transliteration?.text).toBe("to-do");
     expect(parsed.words?.map(({ begin, end, transliteration }) => ({ begin, end, transliteration }))).toEqual([
       { begin: 1, end: 1.5, transliteration: "to-" },
@@ -198,7 +198,7 @@ describe("TTML alternate-language sidecars", () => {
       `<span begin="0:01.250" end="0:01.500">sora${joiner.trimEnd()}</span>${joiner.slice(joiner.trimEnd().length)}<span begin="0:01.500" end="0:01.750">kaze</span>`,
     );
     expect(line).toEqual(before);
-    const parsed = parseLyricsFile("song.ttml", ttml).lines[0];
+    const parsed = parseTtml(ttml).lines[0];
     expect(parsed.transliteration?.backgroundText).toBe(`sora${joiner}kaze`);
     expect(parsed.backgroundWords?.map(({ begin, end }) => ({ begin, end }))).toEqual([
       { begin: 1.25, end: 1.5 },
@@ -206,7 +206,7 @@ describe("TTML alternate-language sidecars", () => {
     ]);
     // Re-exporting the imported, timed punctuation must not add or drop a dash.
     const roundTrip = generateTTML({ metadata, agents, lines: [parsed] });
-    expect(parseLyricsFile("song.ttml", roundTrip).lines[0].transliteration?.backgroundText).toBe(`sora${joiner}kaze`);
+    expect(parseTtml(roundTrip).lines[0].transliteration?.backgroundText).toBe(`sora${joiner}kaze`);
   });
 
   it("keeps matching alternate tracks in the exported TTML for renderers to filter", () => {
@@ -223,7 +223,7 @@ describe("TTML alternate-language sidecars", () => {
       lines: [line],
     });
 
-    const parsed = parseLyricsFile("song.ttml", ttml).lines[0];
+    const parsed = parseTtml(ttml).lines[0];
     expect(parsed.translations?.en.text).toBe("今日");
     expect(parsed.transliteration?.text).toBe("今日");
   });
@@ -242,7 +242,7 @@ describe("TTML alternate-language sidecars", () => {
       lines: [line],
     });
 
-    const parsed = parseLyricsFile("song.ttml", ttml).lines[0];
+    const parsed = parseTtml(ttml).lines[0];
     expect(parsed.translations?.en.text).toBe("today");
     expect(parsed.transliteration?.text).toBe("To-day");
   });

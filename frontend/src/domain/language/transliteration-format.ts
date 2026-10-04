@@ -145,4 +145,3 @@ export {
   twoSpaceSeparatorRegions,
   withoutEdgeUntimedSeparators,
 };
-export type { TransliterationSlice };

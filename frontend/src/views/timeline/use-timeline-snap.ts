@@ -52,10 +52,8 @@ function writeSnappedLeader(leaderKey: string, anchorTime: number | null): void 
 
 function useTimelineSnap(): UseTimelineSnap {
   useSettingsStore((s) => s.timelineSnap);
-  useSettingsStore((s) => s.vocalOnsetSnap);
   useTimelineStore((s) => s.zoom);
   useTimelineStore((s) => s.isBypassing);
-  useTimelineStore((s) => s.vocalOnsetSnapPoints);
   // Deliberately NOT subscribing to customSnapPoints. This hook runs in every
   // word-track, and customSnapPoints changes on every frame of a snap-marker
   // drag, so a reactive subscription here would re-render every word block 60+
@@ -74,14 +72,11 @@ function useTimelineSnap(): UseTimelineSnap {
     const projectSnapPoints = useProjectStore.getState().customSnapPoints;
     const audio = useAudioStore.getState();
     const settings = useSettingsStore.getState();
-    const timeline = useTimelineStore.getState();
     const playhead = audio.audioElement?.currentTime ?? audio.currentTime ?? null;
-    const vocalOnsets = settings.vocalOnsetSnap ? timeline.vocalOnsetSnapPoints : [];
     ctxRef.current.anchors = collectSnapAnchors(
       lines,
       args.selfIds,
       playhead,
-      vocalOnsets,
       settings.timelineSnap,
       snapPointTimes(projectSnapPoints),
     );
@@ -103,10 +98,7 @@ function useTimelineSnap(): UseTimelineSnap {
     const ctx = ctxRef.current;
     const settings = useSettingsStore.getState();
     const timeline = useTimelineStore.getState();
-    const enabled =
-      settings.timelineSnap ||
-      (settings.vocalOnsetSnap && timeline.vocalOnsetSnapPoints.length > 0) ||
-      useProjectStore.getState().customSnapPoints.length > 0;
+    const enabled = settings.timelineSnap || useProjectStore.getState().customSnapPoints.length > 0;
     const threshold = useSettingsStore.getState().timelineSnapThreshold;
     const bypassing = useTimelineStore.getState().isBypassing;
     const zoom = timeline.zoom;

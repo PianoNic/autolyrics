@@ -1,35 +1,14 @@
-import {
-  DEFAULTS,
-  DEFAULT_COBALT_INSTANCE_ID,
-  getActiveCobaltInstance,
-  isUsingDefaultCobaltInstance,
-  useSettingsStore,
-} from "@/stores/settings";
+import { DEFAULTS, useSettingsStore } from "@/stores/settings";
 import { useTimelineStore } from "@/views/timeline/timeline-store";
 import { beforeEach, describe, expect, it } from "vitest";
 
-describe("preview renderer settings", () => {
+describe("audio scrub preview settings", () => {
   beforeEach(() => {
     useSettingsStore.setState({ ...DEFAULTS });
   });
 
-  it("defaults to spicy as the preview renderer", () => {
-    expect(useSettingsStore.getState().previewRenderer).toBe("spicy");
-  });
-
   it("defaults audioScrubPreview to true", () => {
     expect(useSettingsStore.getState().audioScrubPreview).toBe(true);
-  });
-
-  it("allows switching renderer via set()", () => {
-    useSettingsStore.getState().set("previewRenderer", "am-lyrics");
-    expect(useSettingsStore.getState().previewRenderer).toBe("am-lyrics");
-  });
-
-  it("resetToDefaults restores the renderer to spicy", () => {
-    useSettingsStore.getState().set("previewRenderer", "am-lyrics");
-    useSettingsStore.getState().resetToDefaults();
-    expect(useSettingsStore.getState().previewRenderer).toBe("spicy");
   });
 });
 
@@ -43,16 +22,6 @@ describe("audio pitch settings", () => {
     useSettingsStore.getState().set("preservePitch", false);
     useSettingsStore.getState().resetToDefaults();
     expect(useSettingsStore.getState().preservePitch).toBe(true);
-  });
-});
-
-describe("vocal model settings", () => {
-  beforeEach(() => {
-    useSettingsStore.setState({ ...DEFAULTS });
-  });
-
-  it("defaults to fp32 for stable browser inference", () => {
-    expect(useSettingsStore.getState().vocalModelVariant).toBe("fp32");
   });
 });
 
@@ -104,30 +73,6 @@ describe("background vocal extraction settings", () => {
   });
 });
 
-describe("vocal onset snap settings", () => {
-  beforeEach(() => {
-    useSettingsStore.setState({ ...DEFAULTS });
-  });
-
-  it("defaults vocalOnsetSnap to true", () => {
-    expect(DEFAULTS.vocalOnsetSnap).toBe(true);
-    expect(useSettingsStore.getState().vocalOnsetSnap).toBe(true);
-  });
-
-  it("allows toggling vocalOnsetSnap via set()", () => {
-    useSettingsStore.getState().set("vocalOnsetSnap", false);
-    expect(useSettingsStore.getState().vocalOnsetSnap).toBe(false);
-    useSettingsStore.getState().set("vocalOnsetSnap", true);
-    expect(useSettingsStore.getState().vocalOnsetSnap).toBe(true);
-  });
-
-  it("resetToDefaults restores vocalOnsetSnap to true", () => {
-    useSettingsStore.getState().set("vocalOnsetSnap", false);
-    useSettingsStore.getState().resetToDefaults();
-    expect(useSettingsStore.getState().vocalOnsetSnap).toBe(true);
-  });
-});
-
 describe("snap playhead to points settings", () => {
   beforeEach(() => {
     useSettingsStore.setState({ ...DEFAULTS });
@@ -149,43 +94,6 @@ describe("snap playhead to points settings", () => {
     useSettingsStore.getState().set("snapPlayheadToPoints", false);
     useSettingsStore.getState().resetToDefaults();
     expect(useSettingsStore.getState().snapPlayheadToPoints).toBe(true);
-  });
-});
-
-describe("cobalt instance helpers", () => {
-  beforeEach(() => {
-    useSettingsStore.setState({
-      ...DEFAULTS,
-      cobaltInstances: [],
-      selectedCobaltInstanceId: DEFAULT_COBALT_INSTANCE_ID,
-    });
-  });
-
-  it("isUsingDefaultCobaltInstance returns true when default is selected", () => {
-    expect(isUsingDefaultCobaltInstance()).toBe(true);
-  });
-
-  it("isUsingDefaultCobaltInstance returns false when a custom instance is active", () => {
-    useSettingsStore.getState().addCobaltInstance({ label: "Custom", url: "https://example.test" });
-    const custom = useSettingsStore.getState().cobaltInstances[0];
-    useSettingsStore.getState().selectCobaltInstance(custom.id);
-    expect(isUsingDefaultCobaltInstance()).toBe(false);
-  });
-
-  it("isUsingDefaultCobaltInstance falls back to default when selected id is missing", () => {
-    useSettingsStore.setState({ selectedCobaltInstanceId: "ghost-id" });
-    expect(isUsingDefaultCobaltInstance()).toBe(true);
-  });
-
-  it("getActiveCobaltInstance returns the built-in for the default id", () => {
-    expect(getActiveCobaltInstance().id).toBe(DEFAULT_COBALT_INSTANCE_ID);
-  });
-
-  it("getActiveCobaltInstance returns the matching custom instance", () => {
-    useSettingsStore.getState().addCobaltInstance({ label: "Custom", url: "https://example.test" });
-    const custom = useSettingsStore.getState().cobaltInstances[0];
-    useSettingsStore.getState().selectCobaltInstance(custom.id);
-    expect(getActiveCobaltInstance().url).toBe("https://example.test");
   });
 });
 
@@ -245,26 +153,6 @@ describe("settings v2 -> v3 migration", () => {
     expect(migrated.defaultRollingEdit).toBe(true);
     expect(migrated.defaultPreviewSidebar).toBe(true);
   });
-
-  it("still applies the vocalModelVariant fp16 -> fp32 rule", async () => {
-    const { migrateSettingsForTest } = await import("@/stores/settings");
-    const migrated = migrateSettingsForTest({ vocalModelVariant: "fp16" }, 2) as { vocalModelVariant: string };
-    expect(migrated.vocalModelVariant).toBe("fp32");
-  });
-});
-
-describe("settings v3 -> v4 migration (vocalOnsetSnap)", () => {
-  it("fills missing vocalOnsetSnap with true", async () => {
-    const { migrateSettingsForTest } = await import("@/stores/settings");
-    const migrated = migrateSettingsForTest({ defaultZoom: 200 }, 3) as { vocalOnsetSnap: boolean };
-    expect(migrated.vocalOnsetSnap).toBe(true);
-  });
-
-  it("preserves an explicitly disabled vocalOnsetSnap", async () => {
-    const { migrateSettingsForTest } = await import("@/stores/settings");
-    const migrated = migrateSettingsForTest({ vocalOnsetSnap: false }, 3) as { vocalOnsetSnap: boolean };
-    expect(migrated.vocalOnsetSnap).toBe(false);
-  });
 });
 
 describe("settings v4 -> v5 migration (snapPlayheadToPoints)", () => {
@@ -288,43 +176,5 @@ describe("timeline store reads header-toggle defaults at init", () => {
 
   it("initial rollingEditMode matches settings.defaultRollingEdit at the moment the store was created", () => {
     expect(useTimelineStore.getState().rollingEditMode).toBe(useSettingsStore.getState().defaultRollingEdit);
-  });
-});
-
-describe("re-record pre-roll setting", () => {
-  beforeEach(() => {
-    useSettingsStore.setState({ ...DEFAULTS });
-  });
-
-  it("defaults to 1.5 seconds", () => {
-    expect(useSettingsStore.getState().redoPreroll).toBe(1.5);
-  });
-
-  it("can be changed via set()", () => {
-    useSettingsStore.getState().set("redoPreroll", 0.5);
-    expect(useSettingsStore.getState().redoPreroll).toBe(0.5);
-  });
-
-  it("allows zero for an exact-begin seek", () => {
-    useSettingsStore.getState().set("redoPreroll", 0);
-    expect(useSettingsStore.getState().redoPreroll).toBe(0);
-  });
-
-  it("resetToDefaults restores the default pre-roll", () => {
-    useSettingsStore.getState().set("redoPreroll", 3);
-    useSettingsStore.getState().resetToDefaults();
-    expect(useSettingsStore.getState().redoPreroll).toBe(1.5);
-  });
-
-  it("migration backfills a missing pre-roll to the default", async () => {
-    const { migrateSettingsForTest } = await import("@/stores/settings");
-    const migrated = migrateSettingsForTest({ defaultZoom: 200 }, 5) as { redoPreroll: number };
-    expect(migrated.redoPreroll).toBe(1.5);
-  });
-
-  it("migration preserves an explicitly set pre-roll", async () => {
-    const { migrateSettingsForTest } = await import("@/stores/settings");
-    const migrated = migrateSettingsForTest({ redoPreroll: 0.25 }, 5) as { redoPreroll: number };
-    expect(migrated.redoPreroll).toBe(0.25);
   });
 });

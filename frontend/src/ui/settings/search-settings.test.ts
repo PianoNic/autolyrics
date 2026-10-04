@@ -12,7 +12,7 @@ function search(query: string) {
 describe("searchSettings", () => {
   it("finds every snap setting in the timeline", () => {
     expect(search("snap").settings).toEqual(
-      expect.arrayContaining(["timelineSnap", "vocalOnsetSnap", "timelineSnapThreshold", "snapPlayheadToPoints"]),
+      expect.arrayContaining(["timelineSnap", "timelineSnapThreshold", "snapPlayheadToPoints"]),
     );
   });
 

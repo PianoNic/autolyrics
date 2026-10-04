@@ -30,23 +30,9 @@ const SHORTCUT_SECTIONS: ShortcutSectionProps[] = [
   {
     title: "Navigation",
     shortcuts: [
-      { keys: ["Mod", "1"], description: "Go to Import tab" },
-      { keys: ["Mod", "2"], description: "Go to Edit tab" },
-      { keys: ["Mod", "3"], description: "Go to Sync tab" },
-      { keys: ["Mod", "4"], description: "Go to Timeline tab" },
-      { keys: ["Mod", "5"], description: "Go to Preview tab" },
-      { keys: ["Mod", "6"], description: "Go to Export tab" },
-    ],
-  },
-  {
-    title: "Sync Mode",
-    shortcuts: [
-      { keys: ["Space"], description: "Start sync / Tap to sync word", shortcutId: "sync.tap" },
-      { keys: ["F"], description: "Hold to sync word (hold mode)", shortcutId: "sync.holdSync" },
-      { keys: ["ArrowLeft"], description: "Nudge last synced -50ms", shortcutId: "sync.nudgeLeft" },
-      { keys: ["ArrowRight"], description: "Nudge last synced +50ms", shortcutId: "sync.nudgeRight" },
-      { keys: ["Mod", "Z"], description: "Undo" },
-      { keys: ["Mod", "Shift", "Z"], description: "Redo" },
+      { keys: ["Mod", "1"], description: "Go to Edit tab", shortcutId: "global.goToEdit" },
+      { keys: ["Mod", "2"], description: "Go to Timeline tab", shortcutId: "global.goToTimeline" },
+      { keys: ["Mod", "3"], description: "Go to Preview tab", shortcutId: "global.goToPreview" },
     ],
   },
   {
@@ -65,7 +51,6 @@ const SHORTCUT_SECTIONS: ShortcutSectionProps[] = [
       { keys: ["]"], description: "Set word end to playhead", shortcutId: "timeline.setWordEnd" },
       { keys: ["Mod", "Z"], description: "Undo" },
       { keys: ["Mod", "Shift", "Z"], description: "Redo" },
-      { keys: ["Mod", "Shift", "V"], description: "Import lyrics", shortcutId: "timeline.importLyrics" },
       { keys: ["Mod", "Scroll"], description: "Zoom in / out" },
       { keys: ["Middle", "Drag"], description: "Pan timeline" },
       { keys: ["Shift", "Middle", "Drag"], description: "Pan locked to axis" },

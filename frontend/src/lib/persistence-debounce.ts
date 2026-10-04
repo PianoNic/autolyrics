@@ -27,14 +27,6 @@ function debouncedSave(input: ProjectSaveInput): void {
   }, saveDelay);
 }
 
-function cancelPendingSave(): void {
-  if (saveTimeout) {
-    clearTimeout(saveTimeout);
-    saveTimeout = null;
-  }
-  pendingSave = null;
-}
-
 function flushPendingSave(): void {
   if (saveTimeout) {
     clearTimeout(saveTimeout);
@@ -48,4 +40,4 @@ function flushPendingSave(): void {
 
 // -- Exports ------------------------------------------------------------------
 
-export { debouncedSave, cancelPendingSave, flushPendingSave };
+export { debouncedSave, flushPendingSave };

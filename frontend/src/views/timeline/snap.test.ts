@@ -105,28 +105,15 @@ describe("collectSnapAnchors", () => {
     expect(playhead?.t).toBe(0.42);
   });
 
-  it("includes vocal onset snap points when provided", () => {
-    const anchors = collectSnapAnchors([wordTimedLine()], new Set(), null, [0.12, 0.72]);
-    const onsets = anchors.filter((a) => a.kind === "vocal-onset");
-    expect(onsets.map((a) => a.t)).toEqual([0.12, 0.72]);
-    expect(onsets.every((a) => a.label === "vocal onset")).toBe(true);
-  });
-
-  it("can collect vocal onset snap points without timeline anchors", () => {
-    const anchors = collectSnapAnchors([wordTimedLine()], new Set(), 0.42, [0.12, 0.72], false);
-    expect(anchors.map((a) => a.kind)).toEqual(["vocal-onset", "vocal-onset"]);
-    expect(anchors.map((a) => a.t)).toEqual([0.12, 0.72]);
-  });
-
   it("emits one custom anchor per finite, non-negative custom time", () => {
-    const anchors = collectSnapAnchors([wordTimedLine()], new Set(), null, [], true, [0.25, 0.85]);
+    const anchors = collectSnapAnchors([wordTimedLine()], new Set(), null, true, [0.25, 0.85]);
     const customs = anchors.filter((a) => a.kind === "custom");
     expect(customs.map((a) => a.t)).toEqual([0.25, 0.85]);
     expect(customs.every((a) => a.label === "custom")).toBe(true);
   });
 
   it("filters out non-finite and negative custom times", () => {
-    const anchors = collectSnapAnchors([wordTimedLine()], new Set(), null, [], true, [
+    const anchors = collectSnapAnchors([wordTimedLine()], new Set(), null, true, [
       -1,
       0,
       Number.NaN,
@@ -138,29 +125,20 @@ describe("collectSnapAnchors", () => {
   });
 
   it("emits no custom anchors for an empty custom-times array", () => {
-    const anchors = collectSnapAnchors([wordTimedLine()], new Set(), null, [0.1], true, []);
+    const anchors = collectSnapAnchors([wordTimedLine()], new Set(), null, true, []);
     expect(anchors.some((a) => a.kind === "custom")).toBe(false);
   });
 
-  it("coexists with vocal-onset anchors when both arrays are provided", () => {
-    const anchors = collectSnapAnchors([wordTimedLine()], new Set(), null, [0.12], true, [0.9]);
-    const onsets = anchors.filter((a) => a.kind === "vocal-onset");
-    const customs = anchors.filter((a) => a.kind === "custom");
-    expect(onsets.map((a) => a.t)).toEqual([0.12]);
-    expect(customs.map((a) => a.t)).toEqual([0.9]);
-  });
-
   it("can collect custom snap points without timeline anchors", () => {
-    const anchors = collectSnapAnchors([wordTimedLine()], new Set(), 0.42, [], false, [0.3, 0.7]);
+    const anchors = collectSnapAnchors([wordTimedLine()], new Set(), 0.42, false, [0.3, 0.7]);
     expect(anchors.map((a) => a.kind)).toEqual(["custom", "custom"]);
     expect(anchors.map((a) => a.t)).toEqual([0.3, 0.7]);
   });
 
   it("backward-compat: calling without the custom-times arg is unchanged", () => {
     const lines = [wordTimedLine(), lineSyncedLine()];
-    const onsets = [0.12, 0.72];
-    const withoutArg = collectSnapAnchors(lines, new Set(), 1.5, onsets, true);
-    const withEmptyArg = collectSnapAnchors(lines, new Set(), 1.5, onsets, true, []);
+    const withoutArg = collectSnapAnchors(lines, new Set(), 1.5, true);
+    const withEmptyArg = collectSnapAnchors(lines, new Set(), 1.5, true, []);
     expect(withoutArg).toEqual(withEmptyArg);
     expect(withoutArg.some((a) => a.kind === "custom")).toBe(false);
   });

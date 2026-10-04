@@ -63,12 +63,19 @@ function lineBounds(line: LyricLine): { begin: number; end: number } | null {
 }
 
 function lineDisplay(line: LyricLine): string {
-  const main = line.words.map((word) => word.text).join("").trim();
+  const main = line.words
+    .map((word) => word.text)
+    .join("")
+    .trim();
   if (line.background.length === 0) return main;
-  const background = line.background.map((word) => word.text).join("").trim().replace(/^\((.*)\)$/, "$1");
+  const background = line.background
+    .map((word) => word.text)
+    .join("")
+    .trim()
+    .replace(/^\((.*)\)$/, "$1");
   return `${main} (${background})`.trim();
 }
 
 // -- Exports ------------------------------------------------------------------
 
-export { FLAG_LABELS, describeFlags, lineBounds, lineDisplay, lineNeedsReview, needsReview };
+export { describeFlags, lineBounds, lineDisplay, lineNeedsReview, needsReview };

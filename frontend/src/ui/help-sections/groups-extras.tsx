@@ -14,8 +14,8 @@ const GroupsExtras: React.FC = () => (
         <li>Agent assignments.</li>
         <li>Background vocal text.</li>
         <li>
-          Word splits and merges. Siblings get the new word structure, and autolyrics keeps the timing of every word that
-          didn't actually change. Only the split or merged word's slot is divided up. Sibling rhythms you carefully
+          Word splits and merges. Siblings get the new word structure, and autolyrics keeps the timing of every word
+          that didn't actually change. Only the split or merged word's slot is divided up. Sibling rhythms you carefully
           synced earlier survive.
         </li>
         <li>Moving a word between main and background tracks.</li>
@@ -89,10 +89,6 @@ const GroupsExtras: React.FC = () => (
           <strong>Edit view</strong>: a colored divider with the group name and instance count appears before each
           instance, plus a thin closing line at the end. Each grouped line also gets a left-edge stripe in the group
           color and a hover tooltip showing the link count.
-        </li>
-        <li>
-          <strong>Sync view</strong>: the gutter cell shows a chain icon and an instance counter so you know which
-          chorus you're syncing.
         </li>
         <li>
           <strong>TTML export</strong>: groups round-trip via a custom{" "}

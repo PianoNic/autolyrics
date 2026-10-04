@@ -9,7 +9,7 @@ interface ShortcutBinding {
   mod?: boolean;
 }
 
-type ShortcutScope = "global" | "sync" | "timeline";
+type ShortcutScope = "global" | "timeline";
 
 interface ShortcutDefinition {
   id: string;
@@ -47,76 +47,22 @@ const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
     defaultBinding: { key: "e", mod: true, shift: true, alt: true },
   },
   {
-    id: "global.goToImport",
-    scope: "global",
-    description: "Go to Import",
-    defaultBinding: { key: "1", mod: true },
-  },
-  {
     id: "global.goToEdit",
     scope: "global",
     description: "Go to Edit",
-    defaultBinding: { key: "2", mod: true },
-  },
-  {
-    id: "global.goToLanguages",
-    scope: "global",
-    description: "Go to Languages",
-    defaultBinding: { key: "3", mod: true },
-  },
-  {
-    id: "global.goToSync",
-    scope: "global",
-    description: "Go to Sync",
-    defaultBinding: { key: "4", mod: true },
+    defaultBinding: { key: "1", mod: true },
   },
   {
     id: "global.goToTimeline",
     scope: "global",
     description: "Go to Timeline",
-    defaultBinding: { key: "5", mod: true },
+    defaultBinding: { key: "2", mod: true },
   },
   {
     id: "global.goToPreview",
     scope: "global",
     description: "Go to Preview",
-    defaultBinding: { key: "6", mod: true },
-  },
-  {
-    id: "global.goToExport",
-    scope: "global",
-    description: "Go to Export",
-    defaultBinding: { key: "7", mod: true },
-  },
-  {
-    id: "sync.tap",
-    scope: "sync",
-    description: "Tap to sync",
-    defaultBinding: { key: " " },
-  },
-  {
-    id: "sync.holdSync",
-    scope: "sync",
-    description: "Hold to sync",
-    defaultBinding: { key: "f" },
-  },
-  {
-    id: "sync.nudgeLeft",
-    scope: "sync",
-    description: "Nudge left",
-    defaultBinding: { key: "ArrowLeft" },
-  },
-  {
-    id: "sync.nudgeRight",
-    scope: "sync",
-    description: "Nudge right",
-    defaultBinding: { key: "ArrowRight" },
-  },
-  {
-    id: "sync.toggleTextVariant",
-    scope: "sync",
-    description: "Toggle original / transliteration text",
-    defaultBinding: { key: "l" },
+    defaultBinding: { key: "3", mod: true },
   },
   {
     id: "timeline.toggleFollow",
@@ -207,12 +153,6 @@ const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
     scope: "timeline",
     description: "Expand all lines",
     defaultBinding: { key: "x" },
-  },
-  {
-    id: "timeline.importLyrics",
-    scope: "timeline",
-    description: "Import lyrics",
-    defaultBinding: { key: "v", mod: true, shift: true },
   },
   {
     id: "timeline.createGroup",
@@ -344,20 +284,6 @@ const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
     scope: "timeline",
     description: "Jump to next snap point",
     defaultBinding: { key: "ArrowRight", shift: true },
-    repeatable: true,
-  },
-  {
-    id: "timeline.jumpPrevSnapPointFine",
-    scope: "timeline",
-    description: "Jump to previous snap point or onset",
-    defaultBinding: { key: "ArrowLeft", shift: true, alt: true },
-    repeatable: true,
-  },
-  {
-    id: "timeline.jumpNextSnapPointFine",
-    scope: "timeline",
-    description: "Jump to next snap point or onset",
-    defaultBinding: { key: "ArrowRight", shift: true, alt: true },
     repeatable: true,
   },
 ];

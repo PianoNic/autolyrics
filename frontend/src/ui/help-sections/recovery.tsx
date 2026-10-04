@@ -14,8 +14,9 @@ const RecoverySection: React.FC = () => (
 
     <HelpTopic title="The app showed an error">
       <p className={PROSE}>
-        Hit <strong>Download my work</strong> on the error screen. You'll get a project file. Reload autolyrics, head to
-        the Export tab, and click <strong>Import Project</strong> to pick up where you left off.
+        Hit <strong>Download my work</strong> on the error screen. You'll get a project file with your lyrics and
+        timing. Songs opened from autolyrics also save every edit back to the song, so reopening it from the start page
+        brings back everything up to the last save.
       </p>
     </HelpTopic>
 
@@ -45,8 +46,8 @@ const RecoverySection: React.FC = () => (
 
     <HelpTopic title="What's in the backup">
       <p className={PROSE}>
-        Lyrics, timing, agents, groups, and project metadata. Audio doesn't carry over (files are too big), so you'll
-        drop that back in yourself. Everything stays on your device, nothing's uploaded.
+        Lyrics, timing, agents, groups, and project metadata. Audio doesn't carry over (files are too big); the song on
+        the start page still has it.
       </p>
     </HelpTopic>
 
@@ -61,8 +62,7 @@ const RecoverySection: React.FC = () => (
       <p className={PROSE}>
         Sometimes the saved data itself is the issue. After downloading the backup, the same screen (error page or
         /recover) shows a <strong>Clear saved data</strong> button. It wipes the autosave so autolyrics opens fresh next
-        time. Import the file back whenever you're ready. If you can still get into the app, the Export tab's{" "}
-        <strong>Clear</strong> button does the same thing.
+        time. Then open the song again from the start page.
       </p>
     </HelpTopic>
   </div>

@@ -1,4 +1,10 @@
-import { autolyrics, type JobEvent, type JobStatus, type Stage, type StreamPayload } from "@/auto/api/autolyrics-client";
+import {
+  autolyrics,
+  type JobEvent,
+  type JobStatus,
+  type Stage,
+  type StreamPayload,
+} from "@/auto/api/autolyrics-client";
 import { useEffect, useState } from "react";
 
 // -- Types --------------------------------------------------------------------
@@ -73,5 +79,5 @@ function useJobEvents(jobId: string | undefined): JobEventsState {
 
 // -- Exports ------------------------------------------------------------------
 
-export { STAGES, stageViews, useJobEvents };
-export type { JobEventsState, StageView };
+export { stageViews, useJobEvents };
+export type { StageView };

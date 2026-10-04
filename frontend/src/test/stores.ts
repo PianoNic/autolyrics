@@ -1,11 +1,8 @@
 import { useAudioStore } from "@/stores/audio";
-import { useAuthStore } from "@/stores/auth";
 import { useConfirmStore } from "@/stores/confirm-store";
 import { useDivergenceStore } from "@/stores/divergence-store";
-import { INITIAL_STATE as IMPORT_MODAL_INITIAL_STATE, useImportModalStore } from "@/stores/import-modal-store";
 import { useModalStackStore } from "@/stores/modal-stack";
 import { INITIAL_STATE as PROJECT_INITIAL_STATE, useProjectStore } from "@/stores/project";
-import { useSeparationStore } from "@/stores/separation";
 import { DEFAULTS as SETTINGS_DEFAULTS, useSettingsStore } from "@/stores/settings";
 import { useShortcutBindingsStore } from "@/stores/shortcut-bindings";
 import { INITIAL_STATE as THEME_INITIAL_STATE, useThemeStore } from "@/stores/theme";
@@ -33,14 +30,11 @@ async function resetAllStores(): Promise<void> {
   await clearPersistedStorage(useThemeStore);
   useThemeStore.setState({ ...THEME_INITIAL_STATE });
 
-  useAuthStore.getState().clear();
   useAudioStore.getState().reset();
-  useSeparationStore.getState().reset();
   useProjectStore.setState(PROJECT_INITIAL_STATE);
 
   useConfirmStore.setState({ isOpen: false, options: null, resolve: null, queue: [] });
   useDivergenceStore.setState({ isOpen: false, options: null, resolve: null });
-  useImportModalStore.setState({ ...IMPORT_MODAL_INITIAL_STATE });
   useModalStackStore.setState({ count: 0 });
   useUIStore.setState({ ...UI_INITIAL_STATE });
 
@@ -70,9 +64,6 @@ async function resetAllStores(): Promise<void> {
     isBypassing: false,
     snappedBlockId: null,
     snappedAnchorTime: null,
-    vocalOnsetSnapPoints: [],
-    vocalOnsetDetectionStatus: "idle",
-    vocalOnsetDetectionError: null,
   });
 
   if (hasLocalStorage()) globalThis.localStorage.clear();

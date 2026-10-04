@@ -1,7 +1,6 @@
 import { useRef } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { useProjectStore } from "@/stores/project";
-import { useSettingsStore } from "@/stores/settings";
 import { snapPoints } from "@/test/factories";
 import { createFrameProbe, type FrameProbe } from "@/test/frame-probe";
 import { settleFrames } from "@/test/frame-steps";
@@ -46,8 +45,7 @@ const Harness: React.FC<HarnessProps> = ({ wakeSources = true }) => {
 let probe: FrameProbe;
 
 function seedNothingToShow(): void {
-  useSettingsStore.setState({ vocalOnsetSnap: false });
-  useTimelineStore.setState({ zoom: 100, scrollLeft: 0, vocalOnsetSnapPoints: [], markerMode: false });
+  useTimelineStore.setState({ zoom: 100, scrollLeft: 0, markerMode: false });
   useProjectStore.setState({ customSnapPoints: [] });
 }
 
@@ -77,8 +75,8 @@ afterEach(() => {
 
 describe("SnapMarkersOverlay on the frame loop", () => {
   it("keeps the layer transform in sync with horizontal scroll", async () => {
-    useSettingsStore.setState({ vocalOnsetSnap: true });
-    useTimelineStore.setState({ zoom: 100, scrollLeft: 0, vocalOnsetSnapPoints: [1, 2], markerMode: false });
+    useTimelineStore.setState({ zoom: 100, scrollLeft: 0, markerMode: false });
+    useProjectStore.setState({ customSnapPoints: snapPoints([1, 2]) });
 
     const screen = await render(<Harness />);
     const container = scrollContainerOf(screen.container);
@@ -102,9 +100,8 @@ describe("SnapMarkersOverlay on the frame loop", () => {
   });
 
   it("stops updating the layer once the overlay is turned off", async () => {
-    useTimelineStore.setState({ zoom: 100, scrollLeft: 0, vocalOnsetSnapPoints: [], markerMode: true });
+    useTimelineStore.setState({ zoom: 100, scrollLeft: 0, markerMode: true });
     useProjectStore.setState({ customSnapPoints: [] });
-    useSettingsStore.setState({ vocalOnsetSnap: false });
 
     const screen = await render(<Harness />);
     await expect.poll(() => layerOf(screen.container)?.style.transform).toBe(transformAt(0));
@@ -125,8 +122,7 @@ describe("SnapMarkersOverlay on the frame loop", () => {
     });
 
     it("regression #174: stops running frames once the overlay settles", async () => {
-      useSettingsStore.setState({ vocalOnsetSnap: true });
-      useTimelineStore.setState({ zoom: 100, scrollLeft: 0, vocalOnsetSnapPoints: [1, 2], markerMode: true });
+      useTimelineStore.setState({ zoom: 100, scrollLeft: 0, markerMode: true });
       useProjectStore.setState({ customSnapPoints: snapPoints([1]) });
 
       const screen = await render(<Harness />);

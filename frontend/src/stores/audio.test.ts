@@ -6,31 +6,16 @@ beforeEach(() => {
   useAudioStore.getState().reset();
 });
 
-describe("useAudioStore - setYouTubeSource", () => {
-  it("sets a youtube source with cached file", () => {
-    const file = new File([new Uint8Array([1, 2, 3])], "song.opus", { type: "audio/ogg" });
-    useAudioStore.getState().setYouTubeSource("dQw4w9WgXcQ", file);
-    const { source } = useAudioStore.getState();
-    expect(source).toEqual({
-      type: "youtube",
-      videoId: "dQw4w9WgXcQ",
-      file,
-    });
-  });
-
-  it("sets a youtube source without a file (pre-download)", () => {
-    useAudioStore.getState().setYouTubeSource("dQw4w9WgXcQ");
-    const { source } = useAudioStore.getState();
-    expect(source).toEqual({
-      type: "youtube",
-      videoId: "dQw4w9WgXcQ",
-      file: undefined,
-    });
+describe("useAudioStore - setSource", () => {
+  it("sets a file source", () => {
+    const file = new File([new Uint8Array([1, 2, 3])], "song.m4a", { type: "audio/mp4" });
+    useAudioStore.getState().setSource({ type: "file", file });
+    expect(useAudioStore.getState().source).toEqual({ type: "file", file });
   });
 
   it("resets currentTime, duration, and isPlaying", () => {
     useAudioStore.setState({ currentTime: 42, duration: 200, isPlaying: true });
-    useAudioStore.getState().setYouTubeSource("dQw4w9WgXcQ");
+    useAudioStore.getState().setSource({ type: "file", file: new File(["audio"], "song.mp3") });
     const state = useAudioStore.getState();
     expect(state.currentTime).toBe(0);
     expect(state.duration).toBe(0);
@@ -38,51 +23,9 @@ describe("useAudioStore - setYouTubeSource", () => {
   });
 });
 
-describe("useAudioStore - setYouTubeFile", () => {
-  it("attaches a file to an existing youtube source", () => {
-    useAudioStore.getState().setYouTubeSource("dQw4w9WgXcQ");
-    const file = new File([new Uint8Array([4, 5, 6])], "song.opus", { type: "audio/ogg" });
-    useAudioStore.getState().setYouTubeFile(file);
-    const { source } = useAudioStore.getState();
-    expect(source).toEqual({
-      type: "youtube",
-      videoId: "dQw4w9WgXcQ",
-      file,
-    });
-  });
-
-  it("preserves the videoId when attaching a file", () => {
-    useAudioStore.getState().setYouTubeSource("dQw4w9WgXcQ");
-    const file = new File([new Uint8Array([7])], "song.opus", { type: "audio/ogg" });
-    useAudioStore.getState().setYouTubeFile(file);
-    const { source } = useAudioStore.getState();
-    if (!source || source.type !== "youtube") throw new Error("expected youtube source");
-    expect(source.videoId).toBe("dQw4w9WgXcQ");
-    expect(source.file).toBe(file);
-  });
-
-  it("is a no-op when no source is set", () => {
-    const file = new File([new Uint8Array([1])], "song.opus", { type: "audio/ogg" });
-    useAudioStore.getState().setYouTubeFile(file);
-    const { source } = useAudioStore.getState();
-    expect(source).toBeNull();
-  });
-
-  it("is a no-op when source is a file source", () => {
-    const fileSource = new File(["audio"], "test.mp3", { type: "audio/mp3" });
-    useAudioStore.getState().setSource({ type: "file", file: fileSource });
-    const newFile = new File([new Uint8Array([1])], "song.opus", { type: "audio/ogg" });
-    useAudioStore.getState().setYouTubeFile(newFile);
-    const { source } = useAudioStore.getState();
-    if (!source || source.type !== "file") throw new Error("expected file source preserved");
-    expect(source.file).toBe(fileSource);
-  });
-});
-
 describe("useAudioStore - reset", () => {
-  it("clears youtube source", () => {
-    const file = new File([new Uint8Array([1])], "song.opus", { type: "audio/ogg" });
-    useAudioStore.getState().setYouTubeSource("dQw4w9WgXcQ", file);
+  it("clears the source", () => {
+    useAudioStore.getState().setSource({ type: "file", file: new File(["audio"], "song.mp3") });
     useAudioStore.getState().reset();
     expect(useAudioStore.getState().source).toBeNull();
   });

@@ -8,7 +8,6 @@ import {
   IconLayoutRows,
   IconPalette,
   IconPlayerPlay,
-  IconPlugConnected,
   IconSettings,
 } from "@tabler/icons-react";
 
@@ -23,7 +22,6 @@ const SETTINGS_SECTION_ICONS: Record<SettingsSectionId, ModalNavSection["icon"]>
   shortcuts: IconKeyboard,
   confirmations: IconAlertTriangle,
   storage: IconDeviceFloppy,
-  advanced: IconPlugConnected,
 };
 
 // -- Exports -------------------------------------------------------------------

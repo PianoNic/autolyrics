@@ -73,7 +73,7 @@ describe("settingIdsInSection", () => {
 
 describe("sectionLabel", () => {
   it("returns the display label", () => {
-    expect(sectionLabel("sync")).toBe("Sync & Timing");
+    expect(sectionLabel("sync")).toBe("Timing");
   });
 });
 
@@ -93,11 +93,6 @@ describe("readSettingOn", () => {
   it("reads a boolean store value", () => {
     expect(readSettingOn("followPlayhead", { ...DEFAULTS, followPlayhead: false })).toBe(false);
     expect(readSettingOn("followPlayhead", { ...DEFAULTS, followPlayhead: true })).toBe(true);
-  });
-
-  it("uses a custom reader when one is declared", () => {
-    const state = { ...DEFAULTS, experiments: { ...DEFAULTS.experiments, youtubeBridge: true } };
-    expect(readSettingOn("youtubeBridge", state)).toBe(true);
   });
 
   describe("edge cases", () => {

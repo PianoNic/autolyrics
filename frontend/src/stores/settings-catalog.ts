@@ -11,8 +11,7 @@ type SettingsSectionId =
   | "sync"
   | "shortcuts"
   | "confirmations"
-  | "storage"
-  | "advanced";
+  | "storage";
 
 interface SettingsSection {
   id: SettingsSectionId;
@@ -25,7 +24,6 @@ interface SettingEntry {
   description: string;
   keywords?: readonly string[];
   settingKey?: keyof SettingsState;
-  readOn?: (state: SettingsState) => boolean;
 }
 
 // -- Sections ------------------------------------------------------------------
@@ -35,19 +33,13 @@ const SETTINGS_SECTIONS: readonly SettingsSection[] = [
   { id: "theme", label: "Theme" },
   { id: "playback", label: "Playback" },
   { id: "timeline", label: "Timeline" },
-  { id: "sync", label: "Sync & Timing" },
+  { id: "sync", label: "Timing" },
   { id: "shortcuts", label: "Shortcuts" },
   { id: "confirmations", label: "Confirmations" },
   { id: "storage", label: "Save & Storage" },
-  { id: "advanced", label: "Advanced" },
 ];
 
 type SettingId = keyof typeof SETTINGS_CATALOG;
-
-interface SettingHint {
-  text: string;
-  setting: SettingId;
-}
 
 const SETTING_IDS = Object.keys(SETTINGS_CATALOG) as readonly SettingId[];
 
@@ -73,7 +65,6 @@ function settingKeyOf(id: SettingId): keyof SettingsState {
 
 function readSettingOn(id: SettingId, state: SettingsState): boolean | null {
   const entry = settingEntry(id);
-  if (entry.readOn) return entry.readOn(state);
   if (entry.settingKey === undefined) return null;
   const value = state[entry.settingKey];
   return typeof value === "boolean" ? value : null;
@@ -82,4 +73,4 @@ function readSettingOn(id: SettingId, state: SettingsState): boolean | null {
 // -- Exports -------------------------------------------------------------------
 
 export { SETTING_IDS, SETTINGS_SECTIONS, readSettingOn, sectionLabel, settingEntry, settingIdsInSection, settingKeyOf };
-export type { SettingEntry, SettingHint, SettingId, SettingsSectionId };
+export type { SettingEntry, SettingId, SettingsSectionId };

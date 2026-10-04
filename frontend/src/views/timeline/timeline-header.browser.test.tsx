@@ -73,19 +73,12 @@ describe("TimelineHeader", () => {
     useTimelineStore.setState({ textVariant: "original" });
   });
 
-  it("does not render the Import button when onImportLyrics is omitted", async () => {
+  it("does not render an Import button", async () => {
     const screen = await render(<TimelineHeader />);
     const importButton = Array.from(screen.container.querySelectorAll("button")).find((b) =>
       /^Import/i.test(b.textContent ?? ""),
     );
     expect(importButton).toBeUndefined();
-  });
-
-  it("invokes onImportLyrics when the Import button is clicked", async () => {
-    let clicks = 0;
-    const screen = await render(<TimelineHeader onImportLyrics={() => clicks++} />);
-    await screen.getByRole("button", { name: /^Import/ }).click();
-    expect(clicks).toBe(1);
   });
 
   it("renders the Rolling button", async () => {

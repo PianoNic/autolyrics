@@ -8,10 +8,6 @@ import { useSettingsStore } from "@/stores/settings";
 beforeEach(() => {
   useConfirmStore.setState({ isOpen: false, options: null, resolve: null, queue: [] });
   useSettingsStore.setState({
-    confirmReplaceProjectFromHash: true,
-    confirmReplaceLyrics: true,
-    confirmSyncReset: true,
-    confirmClearProject: true,
     confirmResetSettings: true,
     confirmResetShortcuts: true,
     confirmGroupDissolution: true,

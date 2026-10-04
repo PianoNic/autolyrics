@@ -8,11 +8,11 @@ import { allowConsole } from "@/test/console-guard";
 import { settleFrames } from "@/test/frame-steps";
 import { render } from "@/test/render";
 
-const bridgeSectionVisible = () => document.querySelector('[data-testid="bridge-section"]') !== null;
+const scrubSettingVisible = () => document.querySelector('[data-setting-id="audioScrubPreview"]') !== null;
 
 const helpButton = () => document.querySelector('button[title^="Keyboard shortcuts"]') as HTMLButtonElement;
 
-const HELP_NAV_LABELS = ["Getting Started", "Best practices", "Exporting", "Timeline"];
+const HELP_NAV_LABELS = ["Getting Started", "Best practices", "Recovery", "Timeline"];
 
 const helpNav = () => [...(document.querySelector("dialog")?.querySelectorAll("button") ?? [])];
 
@@ -27,14 +27,13 @@ const helpModalOpen = () => document.querySelector("[data-help-content]") !== nu
 
 describe("App", () => {
   it("renders the app header and tab bar", async () => {
-    useProjectStore.setState({ activeTab: "import" });
     const screen = await render(<App />);
     expect(screen.container.textContent).toContain("autolyrics");
     expect(screen.container.querySelector("nav")).not.toBeNull();
   });
 
   it("switches the active tab when a tab button is clicked", async () => {
-    useProjectStore.setState({ activeTab: "import" });
+    useProjectStore.setState({ activeTab: "timeline" });
     const screen = await render(<App />);
     const editButton = screen.container.querySelector('[data-tour="tab-edit"]') as HTMLButtonElement;
     expect(editButton).not.toBeNull();
@@ -47,15 +46,15 @@ describe("App", () => {
     allowConsole(/cannot contain a nested/);
     await render(<App />);
 
-    useUIStore.getState().openSettings({ target: { setting: "youtubeBridge" } });
-    await expect.poll(bridgeSectionVisible).toBe(true);
+    useUIStore.getState().openSettings({ target: { setting: "audioScrubPreview" } });
+    await expect.poll(scrubSettingVisible).toBe(true);
 
     useUIStore.getState().closeSettings();
     await expect.poll(() => document.querySelector("dialog") === null).toBe(true);
 
     useUIStore.getState().openSettings();
     await expect.poll(() => document.querySelector("dialog") !== null).toBe(true);
-    expect(bridgeSectionVisible()).toBe(false);
+    expect(scrubSettingVisible()).toBe(false);
   });
 
   it("regression: reopening help resets the section instead of restoring the last one viewed", async () => {
@@ -67,8 +66,8 @@ describe("App", () => {
     await expect.poll(helpModalOpen).toBe(true);
     expect(activeHelpSection()).toBe("Getting Started");
 
-    helpNavButton("Exporting").click();
-    await expect.poll(activeHelpSection).toBe("Exporting");
+    helpNavButton("Recovery").click();
+    await expect.poll(activeHelpSection).toBe("Recovery");
 
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     await expect.poll(helpModalOpen).toBe(false);

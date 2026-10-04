@@ -48,13 +48,13 @@ describe("useUIStore", () => {
     it("clears a search query left from before", () => {
       state().openSettings();
       state().setSettingsQuery("snap");
-      state().openSettings({ target: { setting: "youtubeBridge" } });
+      state().openSettings({ target: { setting: "audioScrubPreview" } });
       expect(state().settingsQuery).toBe("");
     });
 
     it("keeps the existing return point when retargeted while open", () => {
       state().openSettings({ target: { setting: "followPlayhead" }, returnTo: { section: "timeline", scrollTop: 10 } });
-      state().openSettings({ target: { setting: "youtubeBridge" } });
+      state().openSettings({ target: { setting: "audioScrubPreview" } });
       expect(state().settingsReturnTo).toEqual({ section: "timeline", scrollTop: 10 });
     });
   });
@@ -136,7 +136,7 @@ describe("useUIStore", () => {
 
   describe("invariants", () => {
     it("does not persist across reloads", () => {
-      state().openSettings({ target: { setting: "youtubeBridge" } });
+      state().openSettings({ target: { setting: "audioScrubPreview" } });
       expect(localStorage.getItem("composer-ui")).toBeNull();
     });
   });

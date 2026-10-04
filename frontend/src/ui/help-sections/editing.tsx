@@ -54,8 +54,8 @@ const EditSection: React.FC = () => {
         <p className={`${PROSE} mt-2`}>
           Edits you make to a grouped line's text, agent, or background vocals fan out to every other instance of the
           same template line. Word-level timings survive when the new text has the same word count: existing word slots
-          keep their begin/end and just swap text. If the word count changes, sibling timings clear so you can re-sync
-          them in the Sync view.
+          keep their begin/end and just swap text. If the word count changes, sibling timings clear so you can re-time
+          them on the Timeline.
         </p>
         <p className={`${PROSE} mt-2`}>
           Adding or removing rows inside a grouped instance pops a confirmation: that one instance detaches from the

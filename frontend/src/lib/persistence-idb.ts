@@ -1,9 +1,11 @@
 // -- Constants ----------------------------------------------------------------
 
 const DB_NAME = "ttml-composer";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const PROJECT_STORE_NAME = "projects";
-const STEM_STORE_NAME = "separated-stems";
+// Version 2 also cached separated vocal stems, which can run to hundreds of megabytes. Vocal
+// separation is gone, so the upgrade to 3 drops that store and frees the space.
+const RETIRED_STEM_STORE_NAME = "separated-stems";
 
 // -- Connection ---------------------------------------------------------------
 
@@ -17,8 +19,8 @@ function openDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(PROJECT_STORE_NAME)) {
         db.createObjectStore(PROJECT_STORE_NAME);
       }
-      if (!db.objectStoreNames.contains(STEM_STORE_NAME)) {
-        db.createObjectStore(STEM_STORE_NAME);
+      if (db.objectStoreNames.contains(RETIRED_STEM_STORE_NAME)) {
+        db.deleteObjectStore(RETIRED_STEM_STORE_NAME);
       }
     };
   });
@@ -70,4 +72,4 @@ async function deleteFromStore(storeName: string, key: string): Promise<void> {
 
 // -- Exports ------------------------------------------------------------------
 
-export { DB_NAME, DB_VERSION, PROJECT_STORE_NAME, STEM_STORE_NAME, openDB, getFromStore, setInStore, deleteFromStore };
+export { DB_NAME, DB_VERSION, PROJECT_STORE_NAME, openDB, getFromStore, setInStore, deleteFromStore };

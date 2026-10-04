@@ -1,4 +1,3 @@
-import type { SettingsState } from "@/stores/settings";
 import type { SettingEntry } from "@/stores/settings-catalog";
 import { MOD_KEY } from "@/utils/platform";
 
@@ -74,20 +73,6 @@ const SETTINGS_CATALOG = {
     keywords: ["scrub", "sound"],
     settingKey: "audioScrubPreview",
   },
-  autoSeparateOnImport: {
-    section: "playback",
-    label: "Auto-separate vocals on import",
-    description: "Run the vocal-separation model automatically each time a new audio file is loaded.",
-    keywords: ["stems", "isolate"],
-    settingKey: "autoSeparateOnImport",
-  },
-  vocalModelVariant: {
-    section: "playback",
-    label: "Vocal model precision",
-    description: "fp32 is the stable default. fp16 is smaller but may produce invalid output in some browsers.",
-    keywords: ["fp16", "fp32", "stems", "separation"],
-    settingKey: "vocalModelVariant",
-  },
   defaultZoom: {
     section: "timeline",
     label: "Default zoom",
@@ -106,12 +91,6 @@ const SETTINGS_CATALOG = {
     description: "Word edges snap to nearby anchors when dragging or resizing.",
     settingKey: "timelineSnap",
   },
-  vocalOnsetSnap: {
-    section: "timeline",
-    label: "Vocal onset snap",
-    description: "Include detected vocal onset anchors as snap targets in the timeline.",
-    settingKey: "vocalOnsetSnap",
-  },
   timelineSnapThreshold: {
     section: "timeline",
     label: "Snap threshold",
@@ -122,7 +101,7 @@ const SETTINGS_CATALOG = {
   snapPlayheadToPoints: {
     section: "timeline",
     label: "Snap playhead to points",
-    description: `Clicking or dragging the playhead snaps it to nearby snap points and vocal onsets. Hold ${MOD_KEY} to bypass.`,
+    description: `Clicking or dragging the playhead snaps it to nearby snap points. Hold ${MOD_KEY} to bypass.`,
     settingKey: "snapPlayheadToPoints",
   },
   followPlayhead: {
@@ -183,41 +162,11 @@ const SETTINGS_CATALOG = {
     description: "Shortest allowed duration for a word.",
     settingKey: "minWordDuration",
   },
-  redoPreroll: {
-    section: "sync",
-    label: "Re-record pre-roll",
-    description: "How far before the selected line or word playback starts when re-recording in Sync.",
-    settingKey: "redoPreroll",
-  },
   defaultGranularity: {
     section: "sync",
     label: "Default granularity",
     description: "Whether new projects start in word or line timing mode.",
     settingKey: "defaultGranularity",
-  },
-  confirmReplaceProjectFromHash: {
-    section: "confirmations",
-    label: "Confirm replacing project from URL",
-    description: "Show a warning when an import URL would replace your current project.",
-    settingKey: "confirmReplaceProjectFromHash",
-  },
-  confirmReplaceLyrics: {
-    section: "confirmations",
-    label: "Confirm replacing lyrics on import",
-    description: "Show a warning when importing lyrics into a project that already has lines.",
-    settingKey: "confirmReplaceLyrics",
-  },
-  confirmSyncReset: {
-    section: "confirmations",
-    label: "Confirm resetting sync timing",
-    description: "Show a warning before clearing every word and line timing in the sync view.",
-    settingKey: "confirmSyncReset",
-  },
-  confirmClearProject: {
-    section: "confirmations",
-    label: "Confirm clearing project",
-    description: "Show a warning before discarding the current project, metadata, and audio file.",
-    settingKey: "confirmClearProject",
   },
   confirmResetSettings: {
     section: "confirmations",
@@ -249,37 +198,11 @@ const SETTINGS_CATALOG = {
     description: "Show a warning before a group is deleted and its instances become standalone lines.",
     settingKey: "confirmGroupDissolution",
   },
-  confirmClearImportedSongDetails: {
-    section: "confirmations",
-    label: "Confirm clearing imported song details",
-    description: "Show a warning before a new song clears imported details you have not exported.",
-    settingKey: "confirmClearImportedSongDetails",
-  },
   autoSaveDelay: {
     section: "storage",
     label: "Auto-save delay",
     description: "How long to wait after your last edit before auto-saving.",
     settingKey: "autoSaveDelay",
-  },
-  previewRenderer: {
-    section: "advanced",
-    label: "Preview renderer",
-    description: "Which engine renders synced lyrics in the Preview tab and the Timeline preview.",
-    settingKey: "previewRenderer",
-  },
-  youtubeBridge: {
-    section: "advanced",
-    label: "Composer Bridge for YouTube",
-    description: "Route YouTube imports through a small local binary running on your machine instead of Cobalt.",
-    keywords: ["bridge", "yt-dlp", "local"],
-    readOn: (state: SettingsState) => state.experiments.youtubeBridge,
-  },
-  cobaltInstances: {
-    section: "advanced",
-    label: "Cobalt instances",
-    description:
-      "Composer uses a Cobalt backend to fetch YouTube audio. The default one is currently blocked by YouTube, so add a working instance from cobalt.directory below, or self-host.",
-    keywords: ["youtube", "download", "server"],
   },
 } as const satisfies Record<string, SettingEntry>;
 

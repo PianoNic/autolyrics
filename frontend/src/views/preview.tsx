@@ -2,13 +2,13 @@ import { useExportTtml } from "@/hooks/use-export-ttml";
 import { useAudioStore } from "@/stores/audio";
 import { Button } from "@/ui/button";
 import { EmptyState } from "@/ui/empty-state";
-import { LyricsRenderer } from "@/views/preview/lyrics-renderer";
+import { SpicyRenderer } from "@/views/preview/spicy/spicy-renderer";
 import { IconPlayerPauseFilled, IconPlayerPlayFilled } from "@tabler/icons-react";
 
 // -- Components ---------------------------------------------------------------
 
 const PreviewPanel: React.FC = () => {
-  const { content: ttmlString, duration, lineCount, syncedLineCount } = useExportTtml();
+  const { content: ttmlString, lineCount, syncedLineCount } = useExportTtml();
   const source = useAudioStore((s) => s.source);
   const isPlaying = useAudioStore((s) => s.isPlaying);
   const setIsPlaying = useAudioStore((s) => s.setIsPlaying);
@@ -18,7 +18,7 @@ const PreviewPanel: React.FC = () => {
   if (!source) {
     return (
       <div className="flex flex-col flex-1 p-4">
-        <EmptyState message="No audio loaded" hint="Import audio in the Import tab first" />
+        <EmptyState message="No audio loaded" hint="Open a song from the start page first" />
       </div>
     );
   }
@@ -34,7 +34,7 @@ const PreviewPanel: React.FC = () => {
   if (!hasSyncedContent) {
     return (
       <div className="flex flex-col flex-1 p-4">
-        <EmptyState message="No synced content" hint="Sync lyrics in the Sync tab first" />
+        <EmptyState message="No synced content" hint="Time the words in the Timeline tab first" />
       </div>
     );
   }
@@ -49,7 +49,7 @@ const PreviewPanel: React.FC = () => {
         </Button>
       </div>
 
-      <LyricsRenderer ttmlString={ttmlString} durationSeconds={duration} />
+      <SpicyRenderer ttmlString={ttmlString} />
     </div>
   );
 };

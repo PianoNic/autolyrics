@@ -74,7 +74,6 @@ describe("persistence · customSnapPoints", () => {
       audioSource: { kind: "file", name: "silence.mp3" },
       dismissedSuggestions: [],
       dismissedExplicitSuggestions: [],
-      currentStem: "original",
       primingStripped: false,
     };
     await setInStore(PROJECT_STORE_NAME, "current", legacyRecord);

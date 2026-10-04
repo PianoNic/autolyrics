@@ -15,7 +15,6 @@ export default {
       {
         files: [
           "src/views/edit.tsx",
-          "src/views/sync/sync-panel.tsx",
           "src/views/timeline/word-track.tsx",
           "src/views/timeline/timeline-context-menu.tsx",
           "src/views/timeline/timeline-panel.tsx",
@@ -29,19 +28,13 @@ export default {
           "src/views/timeline/timeline-playhead.tsx",
           "src/views/timeline/paste-preview.tsx",
           "src/views/timeline/timeline-waveform.tsx",
-          "src/views/sync/scrollable-line.tsx",
           "src/views/edit.tsx",
           "src/ui/slider.tsx",
-          "src/ui/settings/cobalt-instances.tsx",
         ],
         rules: ["react-doctor/prefer-tag-over-role"],
       },
       {
-        files: [
-          "src/views/sync/scrollable-line.tsx",
-          "src/views/sync/word-renderer.tsx",
-          "src/views/timeline/suggestions-banner.tsx",
-        ],
+        files: ["src/views/timeline/suggestions-banner.tsx"],
         rules: ["react-doctor/no-render-in-render"],
       },
       {
@@ -49,22 +42,8 @@ export default {
         rules: ["react-doctor/no-multi-comp"],
       },
       {
-        files: [
-          "src/best-practices/examples.tsx",
-          "src/views/export.tsx",
-          "src/views/sync/scrollable-line.tsx",
-          "src/views/sync/split-mode-content.tsx",
-          "src/views/timeline/snap-markers-overlay.tsx",
-        ],
+        files: ["src/best-practices/examples.tsx"],
         rules: ["react-doctor/no-array-index-as-key", "react-doctor/no-array-index-key"],
-      },
-      {
-        files: ["src/ui/help-sections/getting-started.tsx"],
-        rules: ["react-doctor/iframe-missing-sandbox"],
-      },
-      {
-        files: ["src/views/sync/sync-panel.tsx"],
-        rules: ["react-doctor/prefer-useReducer", "react-doctor/no-cascading-set-state"],
       },
       {
         files: ["src/views/edit.tsx"],
@@ -77,14 +56,6 @@ export default {
       {
         files: ["src/stores/settings.ts"],
         rules: ["react-doctor/rendering-hydration-no-flicker", "deslop/unused-export"],
-      },
-      {
-        files: ["src/ui/settings/bridge-section.tsx"],
-        rules: [
-          "react-doctor/effect-needs-cleanup",
-          "react-doctor/exhaustive-deps",
-          "react-doctor/query-destructure-result",
-        ],
       },
       {
         files: ["src/views/timeline/snap-markers-overlay.tsx"],

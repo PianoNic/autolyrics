@@ -6,8 +6,8 @@ import {
   type PairedSplitPoints,
   togglePrimarySplitPoint,
   toggleTransliterationSplitPoint,
-} from "@/views/sync/paired-split-points";
-import { SplitModeContent } from "@/views/sync/split-mode-content";
+} from "@/views/timeline/paired-split-points";
+import { SplitModeContent } from "@/views/timeline/split-mode-content";
 import { useTimelineStore } from "@/views/timeline/timeline-store";
 import {
   type SplitterTarget,

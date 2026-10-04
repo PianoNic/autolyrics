@@ -13,7 +13,7 @@ describe("DefaultPlaybackRateSetting", () => {
   });
 
   it("copies the current playback rate from the keyboard when audio is loaded", async () => {
-    useAudioStore.setState({ source: { type: "youtube", videoId: "abc" }, playbackRate: 1.5 });
+    useAudioStore.setState({ source: { type: "file", file: new File(["audio"], "song.mp3") }, playbackRate: 1.5 });
     const screen = await render(<DefaultPlaybackRateSetting />);
     (screen.getByRole("button", { name: "Use current" }).element() as HTMLElement).focus();
     await userEvent.keyboard("{Enter}");

@@ -11,10 +11,9 @@ import { HelpTopic } from "@/ui/help-topic";
 const TimelineSection: React.FC = () => (
   <div className="space-y-5">
     <p className={PROSE}>
-      The Timeline is where you do the detailed work. While the Sync tab is great for tapping out rough timing, Timeline
-      gives you full control over every word. You can drag words to reposition them, resize their boundaries, split
-      words and syllables, merge blocks, mark explicit words, copy and paste across lines, and more. If you've used a
-      DAW or video editor before, this will feel familiar.
+      The Timeline is where you do the detailed work: it gives you full control over every word. You can drag words to
+      reposition them, resize their boundaries, split words and syllables, merge blocks, mark explicit words, copy and
+      paste across lines, and more. If you've used a DAW or video editor before, this will feel familiar.
     </p>
 
     <HelpTopic title="Layout">
@@ -62,11 +61,6 @@ const TimelineSection: React.FC = () => (
         press play. Faster scrubs play more snippets, slower scrubs play fewer. The preview matches your main volume and
         stays silent when the audio is muted. If it gets in the way, turn off{" "}
         <SettingLink setting="audioScrubPreview" />.
-      </p>
-      <p className={`${PROSE} mt-2`}>
-        If you've separated the song into stems, scrubbing follows the stem you have selected: pick "Vocals" from the
-        stem dropdown and the scrub previews vocals only, which makes it much easier to pin down a syllable boundary.
-        The full track plays back as normal regardless of the stem choice.
       </p>
     </HelpTopic>
 
@@ -200,10 +194,8 @@ const TimelineSection: React.FC = () => (
 
     <HelpTopic title="Snap points and marker mode">
       <p className={PROSE}>
-        Two kinds of snap marker can sit over the waveform. Dashed guide lines are vocal onsets, which autolyrics detects
-        from the separated vocal stem, so they only show up once you have split out vocals and turned on "Snap to vocal
-        onsets" in the stem dropdown. Solid pins are custom snap points you place yourself. Both pull word edges in the
-        way the magnet does, and custom points keep snapping even when Snap and onset snapping are both off.
+        Custom snap points are pins you place over the waveform yourself. They pull word edges in the way the magnet
+        does, and keep snapping even when Snap is off.
       </p>
       <ul className={`${PROSE} list-disc pl-4 space-y-1`}>
         <li>
@@ -223,23 +215,17 @@ const TimelineSection: React.FC = () => (
         <li>
           Press <InlineKeyBadge keys={getEffectiveKeysArray("timeline.jumpPrevSnapPoint")} /> /{" "}
           <InlineKeyBadge keys={getEffectiveKeysArray("timeline.jumpNextSnapPoint")} /> to jump the playhead to the
-          previous or next snap point. These stop on your custom pins. Hold {ALT_KEY} for the finer pair{" "}
-          <InlineKeyBadge keys={getEffectiveKeysArray("timeline.jumpPrevSnapPointFine")} /> /{" "}
-          <InlineKeyBadge keys={getEffectiveKeysArray("timeline.jumpNextSnapPointFine")} />, which also stop on every
-          detected vocal onset.
+          previous or next snap point.
         </li>
-        <li>
-          Drag a pin's head to move it. With onset snapping on, releasing near a vocal onset lands the pin right on it,
-          and the onset tucks behind the pin so you do not see two markers stacked.
-        </li>
+        <li>Drag a pin's head to move it.</li>
         <li>
           Hover a pin to see its time. The trash icon to delete it sits under the head, or press Delete (or Backspace)
           while hovering to remove it.
         </li>
         <li>
           Turn on <SettingLink setting="snapPlayheadToPoints" /> (on by default), and clicking or dragging the playhead
-          snaps it to nearby custom pins and vocal onsets. Hold {MOD_KEY} to bypass it for one gesture. Scroll-wheel
-          scrubbing over the waveform stays smooth and is never snapped.
+          snaps it to nearby custom pins. Hold {MOD_KEY} to bypass it for one gesture. Scroll-wheel scrubbing over the
+          waveform stays smooth and is never snapped.
         </li>
         <li>
           Snap points are saved with your project and come back when you reopen it. Undo and redo treat placing, moving,

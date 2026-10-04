@@ -192,16 +192,6 @@ function timedPrefixText(originalText: string, words: WordTiming[], text: string
   return groups.length === sourceCount ? groups.slice(0, timedCount).join("  ") : text;
 }
 
-function validateTransliterationAlignment(
-  _originalText: string,
-  transliteration: string,
-  words?: WordTiming[],
-): string | null {
-  if (!transliteration.trim() || !words?.length) return null;
-  const plan = planTransliterationAlignment(words, transliteration);
-  return plan.status === "unresolved" ? (plan.message ?? "Press Align to match this to the timing.") : null;
-}
-
 function withAlignedTransliteration(line: LyricLine): LyricLine {
   const track = line.transliteration;
   if (!track) return line;
@@ -242,10 +232,4 @@ function alignTrackToLine(line: LyricLine, track: TransliterationTrack): Partial
   };
 }
 
-export {
-  alignTrackToLine,
-  mappedTransliteration,
-  planTransliterationAlignment,
-  validateTransliterationAlignment,
-  withAlignedTransliteration,
-};
+export { alignTrackToLine, mappedTransliteration, planTransliterationAlignment, withAlignedTransliteration };

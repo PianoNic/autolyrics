@@ -50,7 +50,7 @@ describe("SettingsSectionRows (playback)", () => {
   });
 
   it("adopts the live playback rate when Use current is clicked", async () => {
-    useAudioStore.setState({ source: { type: "youtube", videoId: "abc" }, playbackRate: 1.5 });
+    useAudioStore.setState({ source: { type: "file", file: new File(["audio"], "song.mp3") }, playbackRate: 1.5 });
     const screen = await render(<SettingsSectionRows section="playback" />);
     await screen.getByRole("button", { name: "Use current" }).click();
     await expect.poll(() => useSettingsStore.getState().defaultPlaybackRate).toBe(1.5);

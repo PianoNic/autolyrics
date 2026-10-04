@@ -1,4 +1,3 @@
-import { useAudioStore } from "@/stores/audio";
 import {
   DEFAULT_SYLLABLE_SPLIT_DEFAULTS,
   type ProjectStore,
@@ -14,7 +13,7 @@ function createUiInitialState(): UiState {
   return {
     granularity: useSettingsStore.getState().defaultGranularity,
     editorMode: "simple",
-    activeTab: "import",
+    activeTab: "timeline",
     syllableSplitDefaults: DEFAULT_SYLLABLE_SPLIT_DEFAULTS,
     primingStripped: false,
   };
@@ -29,12 +28,7 @@ const createUiSlice: StateCreator<ProjectStore, [], [], UiState & UiActions> = (
 
   setEditorMode: (editorMode) => set({ editorMode }),
 
-  setActiveTab: (activeTab) => {
-    if (activeTab === "export") {
-      useAudioStore.getState().setIsPlaying(false);
-    }
-    set({ activeTab });
-  },
+  setActiveTab: (activeTab) => set({ activeTab }),
 
   setSyllableSplitDefaults: (syllableSplitDefaults) => set({ syllableSplitDefaults, isDirty: true }),
 

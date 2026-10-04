@@ -21,7 +21,7 @@ describe("SettingsSearchResults", () => {
   it("groups matching rows under their section in section order", async () => {
     const screen = await renderResults("preview");
     const headings = [...screen.container.querySelectorAll("h3")].map((heading) => heading.textContent);
-    expect(headings).toEqual(["Playback", "Timeline", "Shortcuts", "Advanced"]);
+    expect(headings).toEqual(["Playback", "Timeline", "Shortcuts"]);
   });
 
   it("renders live controls that write to the store", async () => {

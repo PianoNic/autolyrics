@@ -9,12 +9,7 @@ const OWNER = "lib/download-file.ts";
 const LOCAL_SCRATCH_DIR = "test/e2e-repro/";
 
 // These create object URLs to play or probe audio, not to download a file.
-const OBJECT_URL_WHITELIST = new Set([
-  OWNER,
-  "stores/separation.ts",
-  "audio/audio-engine.tsx",
-  "audio/probe-audio-file.ts",
-]);
+const OBJECT_URL_WHITELIST = new Set([OWNER, "audio/audio-engine.tsx"]);
 
 interface Rule {
   name: string;

@@ -5,13 +5,9 @@ import { TabBar } from "@/ui/tab-bar";
 import { beforeEach, describe, expect, it } from "vitest";
 
 const TAB_NAME_REGEX = {
-  Import: /^Import/,
   Edit: /^Edit/,
-  Languages: /^Languages/,
-  Sync: /^Sync/,
   Timeline: /^Timeline/,
   Preview: /^Preview/,
-  Export: /^Export/,
 } as const;
 
 describe("TabBar", () => {
@@ -27,17 +23,24 @@ describe("TabBar", () => {
         expect.element(screen.getByRole("button", { name: nameRegex })).toBeInTheDocument(),
       ),
     );
+    expect(screen.container.querySelectorAll("button")).toHaveLength(3);
+  });
+
+  it("opens on the Timeline tab", async () => {
+    const screen = await render(<TabBar />);
+    const timelineButton = screen.getByRole("button", { name: /^Timeline/ }).element();
+    expect(timelineButton.className).toContain("border-composer-accent");
   });
 
   it("highlights the currently active tab from the project store", async () => {
-    useProjectStore.setState({ activeTab: "sync" });
+    useProjectStore.setState({ activeTab: "preview" });
     const screen = await render(<TabBar />);
-    const syncButton = screen.getByRole("button", { name: /^Sync/ }).element();
-    expect(syncButton.className).toContain("border-composer-accent");
+    const previewButton = screen.getByRole("button", { name: /^Preview/ }).element();
+    expect(previewButton.className).toContain("border-composer-accent");
   });
 
   it("dispatches setActiveTab on the project store when a tab is clicked", async () => {
-    useProjectStore.setState({ activeTab: "import" });
+    useProjectStore.setState({ activeTab: "edit" });
     const screen = await render(<TabBar />);
     await screen.getByRole("button", { name: /^Timeline/ }).click();
     expect(useProjectStore.getState().activeTab).toBe("timeline");
@@ -52,52 +55,6 @@ describe("TabBar", () => {
   it("shows shortcut hints when settings.showShortcutHints is true", async () => {
     useSettingsStore.setState({ showShortcutHints: true });
     const screen = await render(<TabBar />);
-    expect(screen.container.querySelectorAll("button > span > span").length).toBeGreaterThan(0);
-  });
-
-  it("shows the number of lines needing language review on the Languages tab", async () => {
-    useSettingsStore.setState({ showShortcutHints: false });
-    useProjectStore.getState().setLines([
-      {
-        id: "l1",
-        text: "changed lyric",
-        agentId: "v1",
-        transliteration: {
-          language: "ko-Latn",
-          text: "romanization",
-          segments: [],
-          origin: "manual",
-          sourceFingerprint: "old-source",
-        },
-      },
-    ]);
-
-    const screen = await render(<TabBar />);
-    await expect.element(screen.getByLabelText("1 line needs review in Languages")).toHaveTextContent("1");
-  });
-
-  it("shows the number of lines with a timing mismatch on the Languages tab", async () => {
-    useSettingsStore.setState({ showShortcutHints: false });
-    useProjectStore.getState().setLines([
-      {
-        id: "l1",
-        text: "가|나",
-        agentId: "v1",
-        words: [
-          { text: "가", begin: 0, end: 0.5, syllableGroupId: "group" },
-          { text: "나", begin: 0.5, end: 1, syllableGroupId: "group" },
-        ],
-        transliteration: {
-          language: "ko-Latn",
-          text: "g",
-          segments: [],
-          origin: "manual",
-          sourceFingerprint: "current",
-        },
-      },
-    ]);
-
-    const screen = await render(<TabBar />);
-    await expect.element(screen.getByLabelText("1 line with a timing mismatch")).toHaveTextContent("1");
+    expect(screen.container.querySelectorAll("[data-inline-key-badge]")).toHaveLength(3);
   });
 });

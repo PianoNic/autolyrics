@@ -14,7 +14,7 @@ const bindingSignature = (binding: ShortcutBinding): string =>
     binding.mod ? "mod" : "",
   ].join("|");
 
-const SCOPES: ShortcutScope[] = ["global", "sync", "timeline"];
+const SCOPES: ShortcutScope[] = ["global", "timeline"];
 
 // -- Tests --------------------------------------------------------------------
 
@@ -45,12 +45,10 @@ describe("SHORTCUT_DEFINITIONS", () => {
     expect(dropMarker?.defaultBinding.mod).toBeUndefined();
   });
 
-  it("registers the four snap-point jump shortcuts with their exact default bindings in the timeline scope", () => {
+  it("registers the snap-point jump shortcuts with their exact default bindings in the timeline scope", () => {
     const expectedBindings: Record<string, ShortcutBinding> = {
       "timeline.jumpPrevSnapPoint": { key: "ArrowLeft", shift: true },
       "timeline.jumpNextSnapPoint": { key: "ArrowRight", shift: true },
-      "timeline.jumpPrevSnapPointFine": { key: "ArrowLeft", shift: true, alt: true },
-      "timeline.jumpNextSnapPointFine": { key: "ArrowRight", shift: true, alt: true },
     };
 
     for (const [id, binding] of Object.entries(expectedBindings)) {
@@ -59,6 +57,16 @@ describe("SHORTCUT_DEFINITIONS", () => {
       expect(definition?.scope).toBe("timeline");
       expect(definition?.defaultBinding).toEqual(binding);
     }
+  });
+
+  it("binds the three tabs to Mod+1..3 in tab-bar order", () => {
+    const tabs = ["global.goToEdit", "global.goToTimeline", "global.goToPreview"];
+    tabs.forEach((id, index) => {
+      expect(SHORTCUT_DEFINITIONS.find((d) => d.id === id)?.defaultBinding).toEqual({
+        key: String(index + 1),
+        mod: true,
+      });
+    });
   });
 
   describe("invariants", () => {
@@ -91,8 +99,8 @@ describe("SHORTCUT_DEFINITIONS", () => {
 
 describe("getShortcutDescription", () => {
   it("returns the registry description for a known shortcut", () => {
-    expect(getShortcutDescription("sync.tap")).toBe("Tap to sync");
-    expect(getShortcutDescription("sync.holdSync")).toBe("Hold to sync");
+    expect(getShortcutDescription("timeline.splitSyllable")).toBe("Split syllable");
+    expect(getShortcutDescription("global.goToTimeline")).toBe("Go to Timeline");
   });
 
   it("returns a description for every registered shortcut", () => {

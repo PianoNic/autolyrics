@@ -6,10 +6,6 @@ import { useProjectStore } from "@/stores/project";
 import { DEFAULT_SYLLABLE_SPLIT_DEFAULTS } from "@/stores/project/types";
 import { useSettingsStore } from "@/stores/settings";
 
-// -- Types --------------------------------------------------------------------
-
-type SavedProjectOrigin = "storage" | "file";
-
 // -- Helpers ------------------------------------------------------------------
 
 function malformedFieldsOf(project: SavedProject): string[] {
@@ -22,7 +18,7 @@ function malformedFieldsOf(project: SavedProject): string[] {
 
 // -- Public API ---------------------------------------------------------------
 
-function applySavedProject(project: SavedProject, origin: SavedProjectOrigin): string[] {
+function applySavedProject(project: SavedProject): string[] {
   const state = useProjectStore.getState();
   state.setMetadata(normalizeLoadedMetadata(project.metadata));
   state.setLines(project.lines ?? []);
@@ -32,13 +28,11 @@ function applySavedProject(project: SavedProject, origin: SavedProjectOrigin): s
   state.setAgents(project.agents && project.agents.length > 0 ? project.agents : DEFAULT_AGENTS);
   state.setDismissedSuggestions(project.dismissedSuggestions ?? []);
   state.setDismissedExplicitSuggestions(project.dismissedExplicitSuggestions ?? []);
-  // The flag describes stored timings against the stored audio, which a project file does not carry.
-  if (origin === "storage") state.setPrimingStripped(project.primingStripped ?? false);
+  state.setPrimingStripped(project.primingStripped ?? false);
   state.setCustomSnapPoints(project.customSnapPoints ?? []);
-  if (origin === "file" || project.hasUnexportedImport) state.markSongDetailsImported();
+  if (project.hasUnexportedImport) state.markSongDetailsImported();
   state.restoreImportedMetadataKeys((project.importedMetadataKeys ?? []).filter(isMetadataKey));
   state.setTtmlEditState(project.ttmlEditState ?? null);
-  if (origin === "file") state.clearHistory();
   state.markClean();
   return malformedFieldsOf(project);
 }

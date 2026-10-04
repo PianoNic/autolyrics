@@ -81,11 +81,6 @@ describe("TimelineSection", () => {
       .toBeInTheDocument();
   });
 
-  it("documents stem-aware scrub preview", async () => {
-    const screen = await render(<TimelineSection />);
-    expect(screen.container.textContent).toContain("separated the song into stems");
-  });
-
   it("documents playhead-anchored zoom on the header buttons", async () => {
     const screen = await render(<TimelineSection />);
     expect(screen.container.textContent).toContain("playhead pinned in place");
@@ -94,8 +89,8 @@ describe("TimelineSection", () => {
   it("documents snap points and marker mode", async () => {
     const screen = await render(<TimelineSection />);
     await expect.element(screen.getByRole("heading", { name: "Snap points and marker mode" })).toBeInTheDocument();
-    expect(screen.container.textContent).toContain("vocal onsets");
-    expect(screen.container.textContent).toContain("custom snap points");
+    expect(screen.container.textContent).toContain("Custom snap points");
+    expect(screen.container.textContent).not.toContain("vocal onset");
   });
 
   it("notes that snap points persist with the project", async () => {
@@ -122,7 +117,6 @@ describe("TimelineSection", () => {
   it("documents jumping the playhead between snap points", async () => {
     const screen = await render(<TimelineSection />);
     expect(screen.container.textContent).toContain("previous or next snap point");
-    expect(screen.container.textContent).toContain("every detected vocal onset");
   });
 
   it("documents the snap playhead to points setting", async () => {

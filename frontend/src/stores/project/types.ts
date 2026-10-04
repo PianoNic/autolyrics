@@ -10,7 +10,7 @@ import type { WordTiming } from "@/domain/word/timing";
 
 type GranularityMode = "line" | "word";
 type EditorMode = "simple" | "advanced";
-type SimpleTab = "import" | "edit" | "languages" | "sync" | "timeline" | "preview" | "export";
+type SimpleTab = "edit" | "timeline" | "preview";
 type TtmlEditState = { source: string; content: string } | null;
 
 interface SyllableSplitDefaults {
@@ -235,7 +235,6 @@ export type {
   SyllableSplitDefaults,
   TtmlEditState,
   MetadataState,
-  SongIdentity,
   AgentsState,
   LinesState,
   GroupsState,

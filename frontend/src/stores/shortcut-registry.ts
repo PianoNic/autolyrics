@@ -19,7 +19,6 @@ function getShortcutsByScope(scope: ShortcutScope): ShortcutDefinition[] {
 
 const SHORTCUT_SCOPE_GROUPS: readonly { scope: ShortcutScope; title: string }[] = [
   { scope: "global", title: "General" },
-  { scope: "sync", title: "Sync Mode" },
   { scope: "timeline", title: "Timeline Mode" },
 ];
 

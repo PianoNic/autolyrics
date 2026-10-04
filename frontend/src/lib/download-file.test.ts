@@ -1,8 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { downloadBlob, downloadText, localDateStamp, sanitizeFileName } from "@/lib/download-file";
-import { exportProjectToFile } from "@/lib/persistence";
 import { buildRecoveryResult } from "@/lib/recovery";
-import { DEFAULT_SYLLABLE_SPLIT_DEFAULTS } from "@/stores/project/types";
 
 const ORIGINAL_TZ = process.env.TZ;
 const FIVE_PAST_MIDNIGHT_IST_SEP_27 = new Date("2026-09-26T18:35:00Z");
@@ -52,29 +50,6 @@ function captureDownload(run: () => void): CapturedDownload {
     URL.revokeObjectURL = originalRevoke;
   }
   return captured;
-}
-
-function captureDownloadName(run: () => void): string {
-  return captureDownload(run).name;
-}
-
-function exportProject(title: string): string {
-  return captureDownloadName(() =>
-    exportProjectToFile({
-      metadata: { title, artists: [], album: "", duration: 0 },
-      agents: [],
-      lines: [],
-      groups: [],
-      granularity: "word",
-      syllableSplitDefaults: DEFAULT_SYLLABLE_SPLIT_DEFAULTS,
-      dismissedSuggestions: [],
-      dismissedExplicitSuggestions: [],
-      customSnapPoints: [],
-      importedMetadataKeys: [],
-      ttmlEditState: null,
-      audioFileName: undefined,
-    }),
-  );
 }
 
 describe("sanitizeFileName", () => {
@@ -172,17 +147,9 @@ describe("backup filenames use the local date", () => {
   it("recovery filename carries the local date", () => {
     expect(buildRecoveryResult({ metadata: { title: "Song" } }).filename).toBe("Song-2026-09-27.ttml-project.json");
   });
-
-  it("project export filename carries the local date", () => {
-    expect(exportProject("Song")).toBe("Song-2026-09-27.ttml-project.json");
-  });
 });
 
 describe("download filenames are sanitized", () => {
-  it("strips filesystem-reserved characters from the project export name", () => {
-    expect(exportProject('a<b>"c/d')).not.toMatch(/[<>"/\\:|?*]/);
-  });
-
   it("strips filesystem-reserved characters from the recovery name", () => {
     expect(buildRecoveryResult({ metadata: { title: "a/b:c" } }).filename).not.toMatch(/[<>"/\\:|?*]/);
   });

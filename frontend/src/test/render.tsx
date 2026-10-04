@@ -1,5 +1,4 @@
 import { DndContext } from "@dnd-kit/core";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MotionConfig } from "motion/react";
 import type { ReactElement, ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
@@ -12,17 +11,7 @@ interface ComposerRenderOptions extends RenderOptions {
 
 function buildWrapper(dndContext: boolean, withRouter: ComposerRenderOptions["withRouter"]) {
   return function ComposerWrapper({ children }: { children: ReactNode }) {
-    // Fresh QueryClient per render so caches do not bleed between tests.
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false, gcTime: 0, staleTime: Number.POSITIVE_INFINITY },
-      },
-    });
-    let tree: ReactNode = (
-      <QueryClientProvider client={queryClient}>
-        <MotionConfig reducedMotion="always">{children}</MotionConfig>
-      </QueryClientProvider>
-    );
+    let tree: ReactNode = <MotionConfig reducedMotion="always">{children}</MotionConfig>;
     if (dndContext) tree = <DndContext>{tree}</DndContext>;
     if (withRouter) {
       const routerOptions = typeof withRouter === "object" ? withRouter : {};

@@ -21,18 +21,11 @@ const BASELINE_OVER_BUDGET = new Set<string>([
   "views/timeline/use-timeline-keyboard.ts",
   "views/edit.tsx",
   "views/timeline/timeline-panel.tsx",
-  "views/sync/sync-panel.tsx",
-  "hooks/useSyncHandlers.ts",
   "views/timeline/utils.ts",
   "views/timeline/word-track.tsx",
   "views/timeline/paste-preview.tsx",
   // timeline-context-menu.tsx is intentionally exempt: its per-target sections share private menu primitives in one file.
   "views/timeline/timeline-context-menu.tsx",
-  "views/sync/scrollable-line.tsx",
-  // shortcut-definitions.ts is intentionally exempt: it is a flat declarative
-  // list of keyboard shortcut definitions. Splitting it per scope would need
-  // a re-export module (barrel files are banned here), which is negative value.
-  "stores/shortcut-definitions.ts",
 ]);
 
 function isTestFile(relPath: string): boolean {

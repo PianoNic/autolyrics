@@ -34,7 +34,7 @@ function elementRole(element: Element): string | null {
 
 // -- TTML Parser --------------------------------------------------------------
 
-function parseTtml(content: string, _fallbackDuration?: number): ParseResult {
+function parseTtml(content: string): ParseResult {
   const metadata: Partial<ProjectMetadata> = {};
   const lines: LyricLine[] = [];
   const lineIndexByKey = new Map<string, number>();

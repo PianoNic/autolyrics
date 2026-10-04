@@ -73,7 +73,6 @@ function useTimelineKeyboard(
   scrollContainerRef: RefObject<HTMLDivElement | null>,
   lines: ReadableLine[],
   duration: number,
-  onOpenLyricsModal?: () => void,
 ) {
   const { handleCopy, handleDelete, handleCut, handlePaste } = useTimelineClipboard(lines);
 
@@ -190,12 +189,6 @@ function useTimelineKeyboard(
       if (e.code === "KeyX" && (e.metaKey || e.ctrlKey) && !e.repeat) {
         e.preventDefault();
         handleCut();
-        return;
-      }
-
-      if (e.code === "KeyV" && (e.metaKey || e.ctrlKey) && e.shiftKey && !e.repeat) {
-        e.preventDefault();
-        onOpenLyricsModal?.();
         return;
       }
 
@@ -636,20 +629,16 @@ function useTimelineKeyboard(
           break;
         }
         case "timeline.jumpPrevSnapPoint":
-        case "timeline.jumpNextSnapPoint":
-        case "timeline.jumpPrevSnapPointFine":
-        case "timeline.jumpNextSnapPointFine": {
+        case "timeline.jumpNextSnapPoint": {
           e.preventDefault();
           const dir: 1 | -1 = matched.includes("Next") ? 1 : -1;
-          const fine = matched.includes("Fine");
           const audioEl = useAudioStore.getState().audioElement;
           const current = audioEl?.currentTime ?? useAudioStore.getState().currentTime;
           const pins = useProjectStore.getState().customSnapPoints;
-          const onsets = fine ? useTimelineStore.getState().vocalOnsetSnapPoints : [];
-          const points = normalizeTimes([...snapPointTimes(pins), ...onsets]);
+          const points = normalizeTimes(snapPointTimes(pins));
           const target = adjacentSnapPoint(points, current, dir);
           if (target === null) {
-            toast(fine ? "No snap point or onset that way" : "No snap point that way");
+            toast("No snap point that way");
             break;
           }
           useAudioStore.getState().seekTo(target);
@@ -670,7 +659,7 @@ function useTimelineKeyboard(
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleSetWordTiming, handleCopy, handleCut, handlePaste, handleDelete, onOpenLyricsModal, lines]);
+  }, [handleSetWordTiming, handleCopy, handleCut, handlePaste, handleDelete, lines]);
 }
 
 // -- Exports -------------------------------------------------------------------

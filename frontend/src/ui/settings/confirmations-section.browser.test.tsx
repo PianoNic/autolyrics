@@ -7,7 +7,7 @@ describe("ConfirmationsSection", () => {
   it("renders one switch per confirmation prompt", async () => {
     const screen = await render(<ConfirmationsSection />);
     const switches = screen.container.querySelectorAll('[role="switch"]');
-    expect(switches.length).toBeGreaterThanOrEqual(6);
+    expect(switches.length).toBe(5);
   });
 
   function toggleForLabel(text: string): HTMLElement {
@@ -20,18 +20,18 @@ describe("ConfirmationsSection", () => {
   }
 
   it("reflects the current settings state via aria-checked", async () => {
-    useSettingsStore.setState({ confirmReplaceLyrics: false });
+    useSettingsStore.setState({ confirmConformToGroup: false });
     await render(<ConfirmationsSection />);
-    const toggle = toggleForLabel("Confirm replacing lyrics on import");
+    const toggle = toggleForLabel("Confirm conforming lines to a group");
     expect(toggle.getAttribute("aria-checked")).toBe("false");
   });
 
   it("flips the settings value when a toggle is clicked", async () => {
     await render(<ConfirmationsSection />);
-    expect(useSettingsStore.getState().confirmClearProject).toBe(true);
-    const toggle = toggleForLabel("Confirm clearing project");
+    expect(useSettingsStore.getState().confirmResetSettings).toBe(true);
+    const toggle = toggleForLabel("Confirm resetting all settings");
     toggle.click();
-    expect(useSettingsStore.getState().confirmClearProject).toBe(false);
+    expect(useSettingsStore.getState().confirmResetSettings).toBe(false);
   });
 
   it("flips confirmApplyToAllSyllableSplit when its toggle is clicked", async () => {
@@ -40,13 +40,5 @@ describe("ConfirmationsSection", () => {
     const toggle = toggleForLabel("Confirm before splitting multiple identical words");
     toggle.click();
     expect(useSettingsStore.getState().confirmApplyToAllSyllableSplit).toBe(false);
-  });
-
-  it("flips confirmClearImportedSongDetails when its toggle is clicked", async () => {
-    await render(<ConfirmationsSection />);
-    expect(useSettingsStore.getState().confirmClearImportedSongDetails).toBe(true);
-    const toggle = toggleForLabel("Confirm clearing imported song details");
-    toggle.click();
-    expect(useSettingsStore.getState().confirmClearImportedSongDetails).toBe(false);
   });
 });

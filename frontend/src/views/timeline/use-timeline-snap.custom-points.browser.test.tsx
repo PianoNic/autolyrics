@@ -27,18 +27,16 @@ describe("useTimelineSnap · custom snap points", () => {
     useTimelineStore.setState({
       zoom: ZOOM,
       isBypassing: false,
-      vocalOnsetSnapPoints: [],
       snappedBlockId: null,
       snappedAnchorTime: null,
     });
     useSettingsStore.setState({
       timelineSnap: false,
-      vocalOnsetSnap: false,
       timelineSnapThreshold: THRESHOLD,
     });
   });
 
-  it("snaps a block to a custom point when both timelineSnap and vocalOnsetSnap are OFF", async () => {
+  it("snaps a block to a custom point when timelineSnap is OFF", async () => {
     useProjectStore.setState({ customSnapPoints: snapPoints([1]) });
     const { result } = await renderHook(() => useTimelineSnap());
 
@@ -52,44 +50,13 @@ describe("useTimelineSnap · custom snap points", () => {
     expect(useTimelineStore.getState().snappedAnchorTime).toBeCloseTo(1, 4);
   });
 
-  it("does not snap when there are no custom points and both snaps are OFF", async () => {
+  it("does not snap when there are no custom points and timelineSnap is OFF", async () => {
     useProjectStore.setState({ customSnapPoints: [] });
     const { result } = await renderHook(() => useTimelineSnap());
 
     beginAt(result);
 
     const shiftPx = result.current.computeShiftPx(0, [0.95]);
-
-    expect(shiftPx).toBe(0);
-    expect(useTimelineStore.getState().snappedAnchorTime).toBeNull();
-  });
-
-  it("snaps to the nearest of a custom point and a vocal onset when both are active (additive)", async () => {
-    useSettingsStore.setState({ vocalOnsetSnap: true });
-    useTimelineStore.setState({ vocalOnsetSnapPoints: [2] });
-    useProjectStore.setState({ customSnapPoints: snapPoints([1]) });
-    const { result } = await renderHook(() => useTimelineSnap());
-
-    beginAt(result);
-
-    const nearOnsetShift = result.current.computeShiftPx(0, [2.05]);
-    expect(nearOnsetShift).toBeCloseTo((2 - 2.05) * ZOOM, 4);
-    expect(useTimelineStore.getState().snappedAnchorTime).toBeCloseTo(2, 4);
-
-    const nearCustomShift = result.current.computeShiftPx(0, [0.95]);
-    expect(nearCustomShift).toBeCloseTo((1 - 0.95) * ZOOM, 4);
-    expect(useTimelineStore.getState().snappedAnchorTime).toBeCloseTo(1, 4);
-  });
-
-  it("keeps vocal onsets gated by vocalOnsetSnap even when a custom point enables snapping", async () => {
-    useSettingsStore.setState({ vocalOnsetSnap: false });
-    useTimelineStore.setState({ vocalOnsetSnapPoints: [2] });
-    useProjectStore.setState({ customSnapPoints: snapPoints([1]) });
-    const { result } = await renderHook(() => useTimelineSnap());
-
-    beginAt(result);
-
-    const shiftPx = result.current.computeShiftPx(0, [2.05]);
 
     expect(shiftPx).toBe(0);
     expect(useTimelineStore.getState().snappedAnchorTime).toBeNull();

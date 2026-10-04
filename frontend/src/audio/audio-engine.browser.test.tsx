@@ -1,9 +1,7 @@
 import { AudioEngine } from "@/audio/audio-engine";
 import { scrubPreview } from "@/audio/scrub-preview";
-import { scrubStemRouter } from "@/audio/scrub-stem-router";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
-import { useSeparationStore } from "@/stores/separation";
 import { useSettingsStore } from "@/stores/settings";
 import { createAudioFile, createMp3File } from "@/test/audio-fixtures";
 import { allowConsole } from "@/test/console-guard";
@@ -22,9 +20,17 @@ function waitFor(predicate: () => boolean, timeout = 1000): Promise<void> {
   });
 }
 
+// play() only starts a snippet once a decoded buffer is loaded, so a probe snippet tells whether one is.
+function scrubBufferLoaded(): boolean {
+  scrubPreview.play(0.05, 1);
+  const loaded = scrubPreview.getActiveSnippet() !== null;
+  scrubPreview.stop();
+  return loaded;
+}
+
 describe("AudioEngine", () => {
   afterEach(() => {
-    scrubStemRouter.clearCache();
+    scrubPreview.useBuffer(null);
   });
 
   it("registers an <audio> element on the store when a file source is set", async () => {
@@ -135,137 +141,22 @@ describe("AudioEngine", () => {
     expect(served.byteLength).toBe(wav.size);
   });
 
-  it("preserves playbackRate when switching separated audio tracks", async () => {
-    await render(<AudioEngine />);
-    useAudioStore.setState({
-      source: { type: "file", file: createAudioFile() },
-      playbackRate: 1.5,
-      volume: 0.4,
-      isMuted: true,
-    });
-    await waitFor(() => useAudioStore.getState().audioElement !== null);
-    const audio = useAudioStore.getState().audioElement as HTMLAudioElement;
-    await waitFor(() => audio.playbackRate === 1.5);
-
-    audio.playbackRate = 1;
-    audio.volume = 1;
-    audio.muted = false;
-    const vocalsUrl = URL.createObjectURL(createAudioFile("vocals.wav"));
-
-    try {
-      useSeparationStore.setState({
-        currentStem: "vocals",
-        availableStems: ["original", "vocals"],
-        stemUrls: { vocals: vocalsUrl },
-      });
-
-      await waitFor(() => audio.src === vocalsUrl);
-      expect(audio.playbackRate).toBe(1.5);
-      expect(audio.volume).toBe(0.4);
-      expect(audio.muted).toBe(true);
-    } finally {
-      URL.revokeObjectURL(vocalsUrl);
-    }
-  });
-
-  it("switches to the instrumental separated track", async () => {
+  it("loads the source into the scrub preview", async () => {
     await render(<AudioEngine />);
     useAudioStore.setState({ source: { type: "file", file: createAudioFile() } });
     await waitFor(() => useAudioStore.getState().audioElement !== null);
-    const audio = useAudioStore.getState().audioElement as HTMLAudioElement;
-    const instrumentalUrl = URL.createObjectURL(createAudioFile("instrumental.wav"));
-
-    try {
-      useSeparationStore.setState({
-        currentStem: "instrumental",
-        availableStems: ["original", "vocals", "instrumental"],
-        stemUrls: { instrumental: instrumentalUrl },
-      });
-
-      await waitFor(() => audio.src === instrumentalUrl);
-      expect(audio.src).toBe(instrumentalUrl);
-    } finally {
-      URL.revokeObjectURL(instrumentalUrl);
-    }
+    await waitFor(scrubBufferLoaded, 5000);
   });
 
-  it("applies a preselected instrumental track after the audio element is created", async () => {
-    const instrumentalUrl = URL.createObjectURL(createAudioFile("instrumental.wav"));
-
-    try {
-      useSeparationStore.setState({
-        currentStem: "instrumental",
-        availableStems: ["original", "vocals", "instrumental"],
-        stemUrls: { instrumental: instrumentalUrl },
-      });
-      await render(<AudioEngine />);
-      useAudioStore.setState({ source: { type: "file", file: createAudioFile() } });
-
-      await waitFor(() => useAudioStore.getState().audioElement?.src === instrumentalUrl);
-      expect(useAudioStore.getState().audioElement?.src).toBe(instrumentalUrl);
-    } finally {
-      URL.revokeObjectURL(instrumentalUrl);
-    }
-  });
-
-  it("switches from a separated track back to the original source", async () => {
+  it("clears the scrub preview buffer when the source becomes null", async () => {
     await render(<AudioEngine />);
     useAudioStore.setState({ source: { type: "file", file: createAudioFile() } });
     await waitFor(() => useAudioStore.getState().audioElement !== null);
-    const audio = useAudioStore.getState().audioElement as HTMLAudioElement;
-    const originalUrl = audio.src;
-    const vocalsUrl = URL.createObjectURL(createAudioFile("vocals.wav"));
-
-    try {
-      useSeparationStore.setState({
-        currentStem: "vocals",
-        availableStems: ["original", "vocals"],
-        stemUrls: { vocals: vocalsUrl },
-      });
-      await waitFor(() => audio.src === vocalsUrl);
-
-      useSeparationStore.setState({ currentStem: "original" });
-      await waitFor(() => audio.src === originalUrl);
-      expect(audio.src).toBe(originalUrl);
-    } finally {
-      URL.revokeObjectURL(vocalsUrl);
-    }
-  });
-
-  it("routes the scrub-preview through the currently-selected stem", async () => {
-    await render(<AudioEngine />);
-    useAudioStore.setState({ source: { type: "file", file: createAudioFile() } });
-    await waitFor(() => useAudioStore.getState().audioElement !== null);
-
-    await waitFor(() => scrubStemRouter.getActiveStem() === "original", 5000);
-
-    const vocalsUrl = URL.createObjectURL(createAudioFile("vocals.wav"));
-    try {
-      useSeparationStore.setState({
-        currentStem: "vocals",
-        availableStems: ["original", "vocals"],
-        stemUrls: { vocals: vocalsUrl },
-      });
-      await waitFor(() => scrubStemRouter.getActiveStem() === "vocals", 5000);
-      scrubPreview.play(0.05, 1);
-      expect(scrubPreview.getActiveSnippet()?.time).toBe(0);
-
-      useSeparationStore.setState({ currentStem: "original" });
-      await waitFor(() => scrubStemRouter.getActiveStem() === "original", 5000);
-    } finally {
-      URL.revokeObjectURL(vocalsUrl);
-    }
-  });
-
-  it("clears the scrub router cache when the source becomes null", async () => {
-    await render(<AudioEngine />);
-    useAudioStore.setState({ source: { type: "file", file: createAudioFile() } });
-    await waitFor(() => useAudioStore.getState().audioElement !== null);
-    await waitFor(() => scrubStemRouter.getActiveStem() === "original", 5000);
+    await waitFor(scrubBufferLoaded, 5000);
 
     useAudioStore.setState({ source: null });
     await waitFor(() => useAudioStore.getState().audioElement === null);
-    expect(scrubStemRouter.getActiveStem()).toBeNull();
+    expect(scrubBufferLoaded()).toBe(false);
   });
 
   it("sets primingStripped to true after the audio element is registered for a wav source", async () => {

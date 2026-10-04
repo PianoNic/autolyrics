@@ -41,8 +41,8 @@ describe("TimelineWaveform click-seek snapping", () => {
   it("snaps a plain click to a nearby pin when the setting is on", async () => {
     setupWaveformAudio(30);
     useProjectStore.setState({ customSnapPoints: snapPoints([15]) });
-    useTimelineStore.setState({ zoom: 50, markerMode: false, vocalOnsetSnapPoints: [] });
-    useSettingsStore.setState({ snapPlayheadToPoints: true, vocalOnsetSnap: true, timelineSnapThreshold: 12 });
+    useTimelineStore.setState({ zoom: 50, markerMode: false });
+    useSettingsStore.setState({ snapPlayheadToPoints: true, timelineSnapThreshold: 12 });
     const seek = trackSeek();
     const screen = await render(<TimelineWaveform />);
     const layer = getClickLayer(screen.container, 1500);
@@ -55,8 +55,8 @@ describe("TimelineWaveform click-seek snapping", () => {
   it("does not snap a Cmd+click: it seeks the raw clicked time", async () => {
     setupWaveformAudio(30);
     useProjectStore.setState({ customSnapPoints: snapPoints([15]) });
-    useTimelineStore.setState({ zoom: 50, markerMode: false, vocalOnsetSnapPoints: [] });
-    useSettingsStore.setState({ snapPlayheadToPoints: true, vocalOnsetSnap: true, timelineSnapThreshold: 12 });
+    useTimelineStore.setState({ zoom: 50, markerMode: false });
+    useSettingsStore.setState({ snapPlayheadToPoints: true, timelineSnapThreshold: 12 });
     const seek = trackSeek();
     const screen = await render(<TimelineWaveform />);
     const layer = getClickLayer(screen.container, 1500);
@@ -69,8 +69,8 @@ describe("TimelineWaveform click-seek snapping", () => {
   it("does not snap when the snapPlayheadToPoints setting is off", async () => {
     setupWaveformAudio(30);
     useProjectStore.setState({ customSnapPoints: snapPoints([15]) });
-    useTimelineStore.setState({ zoom: 50, markerMode: false, vocalOnsetSnapPoints: [] });
-    useSettingsStore.setState({ snapPlayheadToPoints: false, vocalOnsetSnap: true, timelineSnapThreshold: 12 });
+    useTimelineStore.setState({ zoom: 50, markerMode: false });
+    useSettingsStore.setState({ snapPlayheadToPoints: false, timelineSnapThreshold: 12 });
     const seek = trackSeek();
     const screen = await render(<TimelineWaveform />);
     const layer = getClickLayer(screen.container, 1500);
@@ -83,8 +83,8 @@ describe("TimelineWaveform click-seek snapping", () => {
   it("seeks the raw time when no pin is within threshold of the click", async () => {
     setupWaveformAudio(30);
     useProjectStore.setState({ customSnapPoints: snapPoints([2, 27]) });
-    useTimelineStore.setState({ zoom: 50, markerMode: false, vocalOnsetSnapPoints: [] });
-    useSettingsStore.setState({ snapPlayheadToPoints: true, vocalOnsetSnap: true, timelineSnapThreshold: 12 });
+    useTimelineStore.setState({ zoom: 50, markerMode: false });
+    useSettingsStore.setState({ snapPlayheadToPoints: true, timelineSnapThreshold: 12 });
     const seek = trackSeek();
     const screen = await render(<TimelineWaveform />);
     const layer = getClickLayer(screen.container, 1500);
@@ -97,8 +97,8 @@ describe("TimelineWaveform click-seek snapping", () => {
   it("Alt+click still places a point and never seeks, unaffected by the seek snap wrapper", async () => {
     setupWaveformAudio(30);
     useProjectStore.setState({ customSnapPoints: [] });
-    useTimelineStore.setState({ zoom: 50, markerMode: false, vocalOnsetSnapPoints: [] });
-    useSettingsStore.setState({ snapPlayheadToPoints: true, vocalOnsetSnap: true, timelineSnapThreshold: 12 });
+    useTimelineStore.setState({ zoom: 50, markerMode: false });
+    useSettingsStore.setState({ snapPlayheadToPoints: true, timelineSnapThreshold: 12 });
     const seek = trackSeek();
     const screen = await render(<TimelineWaveform />);
     const layer = getClickLayer(screen.container, 1500);

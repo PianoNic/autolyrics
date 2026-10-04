@@ -2,13 +2,10 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AUDIO_WAKE_EVENTS, wireFrameLoop } from "@/lib/frame-loop-wiring";
 import { subscribeFrame, TAIL_FRAMES } from "@/lib/frame-loop";
 import { useAudioStore } from "@/stores/audio";
-import { useAuthStore } from "@/stores/auth";
 import { useConfirmStore } from "@/stores/confirm-store";
 import { useDivergenceStore } from "@/stores/divergence-store";
-import { useImportModalStore } from "@/stores/import-modal-store";
 import { useModalStackStore } from "@/stores/modal-stack";
 import { useProjectStore } from "@/stores/project";
-import { useSeparationStore } from "@/stores/separation";
 import { useSettingsStore } from "@/stores/settings";
 import { useShortcutBindingsStore } from "@/stores/shortcut-bindings";
 import { useThemeStore } from "@/stores/theme";
@@ -24,13 +21,10 @@ const LIVE_FRAMES = TAIL_FRAMES + 6;
 
 const WIRED_STORE_WRITES: Array<[string, () => void]> = [
   ["audio", () => useAudioStore.getState().setCurrentTime(1)],
-  ["auth", () => useAuthStore.getState().setJwt("frame-loop", Date.now() + 60_000)],
   ["confirm", () => useConfirmStore.setState({ isOpen: true })],
   ["divergence", () => useDivergenceStore.setState({ isOpen: true })],
-  ["import modal", () => useImportModalStore.getState().open()],
   ["modal stack", () => useModalStackStore.getState().push()],
   ["project", () => useProjectStore.setState({ activeTab: "edit" })],
-  ["separation", () => useSeparationStore.setState({ modelCached: true })],
   ["settings", () => useSettingsStore.setState({ defaultZoom: 120 })],
   ["shortcut bindings", () => useShortcutBindingsStore.setState({ overrides: {} })],
   ["theme", () => useThemeStore.setState({ customThemes: [] })],
@@ -86,7 +80,7 @@ describe("wireFrameLoop", () => {
       expect(await probe.wokeAfter(() => current.dispatchEvent(new Event("play")))).toBe(true);
     });
 
-    it("fires loadstart when a stem switch assigns a new src", async () => {
+    it("fires loadstart when a new src is assigned", async () => {
       const audioElement = attachAudioElement();
       const observed: string[] = [];
       audioElement.addEventListener("loadstart", () => observed.push("loadstart"));
@@ -94,7 +88,7 @@ describe("wireFrameLoop", () => {
       await expect.poll(() => observed).toContain("loadstart");
     });
 
-    it("wakes the loop when a stem switch assigns a new src", async () => {
+    it("wakes the loop when a new src is assigned", async () => {
       const audioElement = attachAudioElement();
       const woke = await probe.wokeAfter(() => {
         audioElement.src = URL.createObjectURL(createAudioFile());

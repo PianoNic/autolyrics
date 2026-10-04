@@ -1,8 +1,6 @@
-import { LYRICS_FORMATS_PROSE } from "@/domain/lyrics-file/supported-formats";
 import { getEffectiveKeysArray } from "@/stores/shortcut-bindings";
 import { PROSE } from "@/ui/typography";
 import { InlineKeyBadge } from "@/ui/inline-key-badge";
-import { MOD_KEY } from "@/utils/platform";
 import { HelpTopic } from "@/ui/help-topic";
 
 // -- Getting Started ----------------------------------------------------------
@@ -10,58 +8,42 @@ import { HelpTopic } from "@/ui/help-topic";
 const GettingStartedSection: React.FC = () => (
   <div className="space-y-5">
     <p className={PROSE}>
-      This is the autolyrics editor, built on Composer. autolyrics opens finished songs on the Timeline with every
-      word already timed; the tabs left-to-right are the manual way through: import, edit, sync and export.
+      This is the autolyrics editor, built on Composer. autolyrics finds the lyrics, times every word and opens the
+      finished song here, so all that is left is checking it and fixing what the machine got wrong.
     </p>
 
     <div className="space-y-4">
-      <HelpTopic title="1. Import your audio">
+      <HelpTopic title="1. Check the flagged lines">
         <p className={PROSE}>
-          Drop an audio file (MP3, WAV, M4A, OGG, FLAC) into the Import tab, or paste a YouTube URL to pull the audio
-          from a video. Local files can also be dropped straight onto the Timeline. The waveform appears once the audio
-          loads.
+          The song opens on the Timeline. The <strong>to check</strong> button in the header lists the lines autolyrics
+          was unsure about; pick one to jump the playhead there, and tick it off once it sounds right.
         </p>
       </HelpTopic>
-      <HelpTopic title="2. Add your lyrics">
+      <HelpTopic title="2. Fix the timing">
         <p className={PROSE}>
-          Go to the Edit tab and type or paste your lyrics, one line per row. If you have a lyrics file (
-          {LYRICS_FORMATS_PROSE}), drop it there instead. You can also use{" "}
-          <InlineKeyBadge keys={getEffectiveKeysArray("timeline.importLyrics")} /> in Timeline to import lyrics without
-          leaving that view.
+          Drag word blocks on the waveform to move them, drag their edges to resize them, and split or merge words and
+          syllables. Everything you change saves itself back to the song.
         </p>
       </HelpTopic>
-      <HelpTopic title="3. Sync the timing">
+      <HelpTopic title="3. Fix the text">
         <p className={PROSE}>
-          The Sync tab lets you sync words to the music using two keys: tap Space to mark gapless word boundaries, or
-          hold F to capture a word's full duration. You can also tap Space while holding F to create gapless syllable
-          boundaries. If you miss one, use the arrow keys to nudge the timing. For finer control, switch to Timeline and
-          drag word blocks directly on the waveform.
+          The Edit tab shows the lyrics as plain text, one line per row. Correct a word there and its timing stays put;
+          assign singers and background vocals in the same place.
         </p>
       </HelpTopic>
-      <HelpTopic title="4. Preview and export">
+      <HelpTopic title="4. Preview and download">
         <p className={PROSE}>
-          The Preview tab shows a live karaoke-style playback of your work. When you're happy with it, go to Export and
-          download your TTML file. You can also copy the raw XML or export a project file to share with someone else.
+          The Preview tab plays the song karaoke-style with the timing you set. The <strong>Files</strong> button in the
+          header downloads the lyrics as TTML, LRC, SRT or QRC.
         </p>
       </HelpTopic>
     </div>
 
     <p className={PROSE}>
-      The tabs are meant to be followed left-to-right, but you can jump between them anytime using {MOD_KEY} + 1 through
-      6.
+      Switch between the tabs with <InlineKeyBadge keys={getEffectiveKeysArray("global.goToEdit")} />,{" "}
+      <InlineKeyBadge keys={getEffectiveKeysArray("global.goToTimeline")} /> and{" "}
+      <InlineKeyBadge keys={getEffectiveKeysArray("global.goToPreview")} />.
     </p>
-
-    <div className="aspect-video w-full rounded-lg overflow-hidden border border-composer-border">
-      <iframe
-        src="https://www.youtube.com/embed/to138zXZ0nc?rel=0"
-        loading="lazy"
-        title="Composer tutorial"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
-        allowFullScreen
-        className="w-full h-full"
-      />
-    </div>
   </div>
 );
 

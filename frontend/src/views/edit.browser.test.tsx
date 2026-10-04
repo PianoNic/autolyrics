@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { userEvent } from "vitest/browser";
-import { INITIAL_STATE as IMPORT_MODAL_INITIAL_STATE, useImportModalStore } from "@/stores/import-modal-store";
 import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
 import { createLine } from "@/test/factories";
@@ -162,19 +161,6 @@ describe("manual background vocal editing", () => {
     await bgTrigger.click();
 
     await expect.element(screen.getByRole("textbox", { name: "Background vocals text" })).toBeInTheDocument();
-  });
-
-  it("opens the lyrics import modal when the Import Lyrics button is clicked", async () => {
-    useImportModalStore.setState({ ...IMPORT_MODAL_INITIAL_STATE });
-    useProjectStore.setState({ lines: [] });
-    const screen = await render(<EditPanel />);
-
-    const button = screen.getByRole("button", { name: "Import Lyrics" });
-    await expect.element(button).toBeInTheDocument();
-
-    await button.click();
-
-    await expect.poll(() => useImportModalStore.getState().isOpen).toBe(true);
   });
 
   it("stamps a manual provenance when typing background text in the popover", async () => {

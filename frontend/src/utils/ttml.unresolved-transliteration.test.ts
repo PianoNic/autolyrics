@@ -1,5 +1,5 @@
 import type { LyricLine } from "@/domain/line/model";
-import { parseLyricsFile } from "@/utils/lyrics-parsers";
+import { parseTtml } from "@/utils/lyrics-parsers/ttml";
 import { generateTTML } from "@/utils/ttml";
 import { renderTransliterationContent } from "@/utils/ttml-alternate-content";
 import { describe, expect, it } from "vitest";
@@ -58,7 +58,7 @@ describe("TTML unresolved transliteration", () => {
         agents: [{ id: "v1", type: "person", name: "Lead" }],
         lines: [line],
       });
-      const parsed = parseLyricsFile("song.ttml", ttml).lines[0];
+      const parsed = parseTtml(ttml).lines[0];
       expect(parsed.transliteration?.text).toBe(line.transliteration!.text);
       expect(parsed.transliteration?.backgroundText).toBe(line.transliteration!.backgroundText);
       const unaffectedWords = side === "main" ? parsed.backgroundWords : parsed.words;

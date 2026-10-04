@@ -1,4 +1,3 @@
-import { DEFAULT_BRIDGE_URL } from "@/utils/composer-bridge-api";
 import { PREVIEW_SIDEBAR_WIDTH } from "@/utils/preview-sidebar-width";
 import { DEFAULT_MIN_WORD_DURATION } from "@/utils/word-spaces";
 import { create } from "zustand";
@@ -8,26 +7,6 @@ import { persist } from "zustand/middleware";
 
 type GranularityDefault = "word" | "line";
 type LinkedDivergenceAction = "ask" | "apply" | "detach";
-type PreviewRenderer = "spicy" | "braccato" | "am-lyrics";
-type VocalModelVariant = "fp16" | "fp32";
-
-interface ExperimentFlags {
-  youtubeBridge: boolean;
-}
-
-interface CobaltInstance {
-  id: string;
-  label: string;
-  url: string;
-}
-
-interface CobaltInstanceStatus {
-  status: "success" | "error";
-  errorMessage?: string;
-  at: number;
-}
-
-const DEFAULT_COBALT_INSTANCE_ID = "default";
 
 interface SettingsState {
   defaultPlaybackRate: number;
@@ -44,7 +23,6 @@ interface SettingsState {
   previewSidebarWidth: number;
   timelineSnap: boolean;
   timelineSnapThreshold: number;
-  vocalOnsetSnap: boolean;
   snapPlayheadToPoints: boolean;
   syllablesFollowRolling: boolean;
   timelineHorizontalScroll: boolean;
@@ -52,7 +30,6 @@ interface SettingsState {
   nudgeAmount: number;
   defaultWordDuration: number;
   minWordDuration: number;
-  redoPreroll: number;
   defaultGranularity: GranularityDefault;
 
   autoSaveDelay: number;
@@ -64,39 +41,17 @@ interface SettingsState {
   mergeStandaloneBackgroundLines: boolean;
   preserveBracketsOnExtraction: boolean;
 
-  confirmReplaceProjectFromHash: boolean;
-  confirmReplaceLyrics: boolean;
-  confirmSyncReset: boolean;
-  confirmClearProject: boolean;
   confirmResetSettings: boolean;
   confirmResetShortcuts: boolean;
   confirmGroupDissolution: boolean;
   confirmApplyToAllSyllableSplit: boolean;
   confirmConformToGroup: boolean;
-  confirmClearImportedSongDetails: boolean;
   linkedDivergenceAction: LinkedDivergenceAction;
-
-  previewRenderer: PreviewRenderer;
-
-  autoSeparateOnImport: boolean;
-  vocalModelVariant: VocalModelVariant;
-
-  cobaltInstances: CobaltInstance[];
-  selectedCobaltInstanceId: string;
-  cobaltInstanceStatus: Record<string, CobaltInstanceStatus>;
-
-  experiments: ExperimentFlags;
-  composerBridgeUrl: string;
 }
 
 interface SettingsActions {
   set: <K extends keyof SettingsState>(key: K, value: SettingsState[K]) => void;
   resetToDefaults: () => void;
-  addCobaltInstance: (instance: Omit<CobaltInstance, "id">) => void;
-  updateCobaltInstance: (id: string, updates: Partial<Omit<CobaltInstance, "id">>) => void;
-  removeCobaltInstance: (id: string) => void;
-  selectCobaltInstance: (id: string) => void;
-  recordCobaltInstanceResult: (id: string, status: "success" | "error", errorMessage?: string) => void;
 }
 
 // -- Defaults -----------------------------------------------------------------
@@ -116,7 +71,6 @@ const DEFAULTS: SettingsState = {
   previewSidebarWidth: PREVIEW_SIDEBAR_WIDTH.default,
   timelineSnap: true,
   timelineSnapThreshold: 12,
-  vocalOnsetSnap: true,
   snapPlayheadToPoints: true,
   syllablesFollowRolling: false,
   timelineHorizontalScroll: false,
@@ -124,7 +78,6 @@ const DEFAULTS: SettingsState = {
   nudgeAmount: 0.05,
   defaultWordDuration: 0.3,
   minWordDuration: DEFAULT_MIN_WORD_DURATION,
-  redoPreroll: 1.5,
   defaultGranularity: "word",
 
   autoSaveDelay: 2000,
@@ -136,60 +89,49 @@ const DEFAULTS: SettingsState = {
   mergeStandaloneBackgroundLines: true,
   preserveBracketsOnExtraction: true,
 
-  confirmReplaceProjectFromHash: true,
-  confirmReplaceLyrics: true,
-  confirmSyncReset: true,
-  confirmClearProject: true,
   confirmResetSettings: true,
   confirmResetShortcuts: true,
   confirmGroupDissolution: true,
   confirmApplyToAllSyllableSplit: true,
   confirmConformToGroup: true,
-  confirmClearImportedSongDetails: true,
   linkedDivergenceAction: "ask",
-
-  previewRenderer: "spicy",
-
-  autoSeparateOnImport: false,
-  vocalModelVariant: "fp32",
-
-  cobaltInstances: [],
-  selectedCobaltInstanceId: DEFAULT_COBALT_INSTANCE_ID,
-  cobaltInstanceStatus: {},
-
-  experiments: { youtubeBridge: false },
-  composerBridgeUrl: DEFAULT_BRIDGE_URL,
 };
 
-const BUILTIN_COBALT_INSTANCE: CobaltInstance = {
-  id: DEFAULT_COBALT_INSTANCE_ID,
-  label: "Composer",
-  url: "https://cobalt.boidu.dev",
-};
+const SETTINGS_PERSIST_VERSION = 8;
 
-const SETTINGS_PERSIST_VERSION = 7;
-
-const PREVIEW_RENDERERS: readonly PreviewRenderer[] = ["spicy", "braccato", "am-lyrics"];
+// Settings of features this build no longer has (YouTube import, vocal separation, the other
+// preview renderers, the Sync tab, URL and file imports). Older blobs still carry them.
+const RETIRED_SETTING_KEYS = [
+  "previewRenderer",
+  "autoSeparateOnImport",
+  "vocalModelVariant",
+  "vocalOnsetSnap",
+  "cobaltInstances",
+  "selectedCobaltInstanceId",
+  "cobaltInstanceStatus",
+  "experiments",
+  "composerBridgeUrl",
+  "redoPreroll",
+  "confirmReplaceProjectFromHash",
+  "confirmReplaceLyrics",
+  "confirmSyncReset",
+  "confirmClearProject",
+  "confirmClearImportedSongDetails",
+] as const;
 
 function migrateSettings(persistedState: unknown, version: number): unknown {
   if (!persistedState || typeof persistedState !== "object") return persistedState;
-  const state = persistedState as Partial<SettingsState>;
-  const next: Partial<SettingsState> = { ...state };
-  if (version < 2 || next.vocalModelVariant === "fp16") {
-    next.vocalModelVariant = "fp32";
-  }
+  // The store merges a persisted blob over the defaults as is, so a retired key would otherwise
+  // ride along in state and be written back on every save.
+  const raw: Record<string, unknown> = { ...persistedState };
+  for (const key of RETIRED_SETTING_KEYS) delete raw[key];
+  const next = raw as Partial<SettingsState>;
   if (next.defaultRollingEdit === undefined) next.defaultRollingEdit = false;
   if (next.defaultPreviewSidebar === undefined) next.defaultPreviewSidebar = false;
-  if (next.vocalOnsetSnap === undefined) next.vocalOnsetSnap = true;
   if (next.snapPlayheadToPoints === undefined) next.snapPlayheadToPoints = true;
-  if (next.redoPreroll === undefined) next.redoPreroll = 1.5;
   // The key predates the default flip, so every old blob carries an explicit
   // false that a plain undefined guard would never reach.
   if (version < 6) next.preserveBracketsOnExtraction = true;
-  // Braccato was the default before Spicy, so a blob from then carries it whether or not
-  // it was ever picked; am-lyrics was always a deliberate choice and stays.
-  if (version < 7 && next.previewRenderer === "braccato") next.previewRenderer = "spicy";
-  if (!PREVIEW_RENDERERS.includes(next.previewRenderer as PreviewRenderer)) next.previewRenderer = "spicy";
   return next;
 }
 
@@ -204,78 +146,19 @@ const useSettingsStore = create<SettingsState & SettingsActions>()(
       resetToDefaults: () =>
         set((state) => ({
           ...DEFAULTS,
-          confirmReplaceProjectFromHash: state.confirmReplaceProjectFromHash,
-          confirmReplaceLyrics: state.confirmReplaceLyrics,
-          confirmSyncReset: state.confirmSyncReset,
-          confirmClearProject: state.confirmClearProject,
           confirmResetSettings: state.confirmResetSettings,
           confirmResetShortcuts: state.confirmResetShortcuts,
           confirmGroupDissolution: state.confirmGroupDissolution,
           confirmApplyToAllSyllableSplit: state.confirmApplyToAllSyllableSplit,
           confirmConformToGroup: state.confirmConformToGroup,
-          confirmClearImportedSongDetails: state.confirmClearImportedSongDetails,
           linkedDivergenceAction: state.linkedDivergenceAction,
-          cobaltInstances: state.cobaltInstances,
-          selectedCobaltInstanceId: state.selectedCobaltInstanceId,
-          cobaltInstanceStatus: state.cobaltInstanceStatus,
-          experiments: state.experiments,
-          composerBridgeUrl: state.composerBridgeUrl,
-        })),
-      addCobaltInstance: (instance) =>
-        set((state) => {
-          const id = crypto.randomUUID();
-          return { cobaltInstances: [...state.cobaltInstances, { ...instance, id }] };
-        }),
-      updateCobaltInstance: (id, updates) =>
-        set((state) => ({
-          cobaltInstances: state.cobaltInstances.map((i) => (i.id === id ? { ...i, ...updates } : i)),
-        })),
-      removeCobaltInstance: (id) =>
-        set((state) => {
-          const nextStatus = { ...state.cobaltInstanceStatus };
-          delete nextStatus[id];
-          return {
-            cobaltInstances: state.cobaltInstances.filter((i) => i.id !== id),
-            selectedCobaltInstanceId:
-              state.selectedCobaltInstanceId === id ? DEFAULT_COBALT_INSTANCE_ID : state.selectedCobaltInstanceId,
-            cobaltInstanceStatus: nextStatus,
-          };
-        }),
-      selectCobaltInstance: (id) => set({ selectedCobaltInstanceId: id }),
-      recordCobaltInstanceResult: (id, status, errorMessage) =>
-        set((state) => ({
-          cobaltInstanceStatus: {
-            ...state.cobaltInstanceStatus,
-            [id]: { status, errorMessage, at: Date.now() },
-          },
         })),
     }),
     { name: "composer-settings", version: SETTINGS_PERSIST_VERSION, migrate: migrateSettings },
   ),
 );
 
-function getActiveCobaltInstance(): CobaltInstance {
-  const state = useSettingsStore.getState();
-  if (state.selectedCobaltInstanceId === DEFAULT_COBALT_INSTANCE_ID) return BUILTIN_COBALT_INSTANCE;
-  const found = state.cobaltInstances.find((i) => i.id === state.selectedCobaltInstanceId);
-  return found ?? BUILTIN_COBALT_INSTANCE;
-}
-
-function isUsingDefaultCobaltInstance(): boolean {
-  const state = useSettingsStore.getState();
-  if (state.selectedCobaltInstanceId === DEFAULT_COBALT_INSTANCE_ID) return true;
-  return !state.cobaltInstances.some((i) => i.id === state.selectedCobaltInstanceId);
-}
-
 // -- Exports ------------------------------------------------------------------
 
-export {
-  useSettingsStore,
-  DEFAULTS,
-  BUILTIN_COBALT_INSTANCE,
-  DEFAULT_COBALT_INSTANCE_ID,
-  getActiveCobaltInstance,
-  isUsingDefaultCobaltInstance,
-  migrateSettings as migrateSettingsForTest,
-};
-export type { SettingsState, CobaltInstanceStatus, LinkedDivergenceAction, VocalModelVariant };
+export { useSettingsStore, DEFAULTS, migrateSettings as migrateSettingsForTest };
+export type { SettingsState, LinkedDivergenceAction };

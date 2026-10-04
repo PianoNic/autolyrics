@@ -25,11 +25,6 @@ describe("assignBinding", () => {
     expect(getEffectiveBinding("timeline.togglePreview").key).toBe("");
   });
 
-  it("leaves shortcuts in a scope that does not overlap", () => {
-    assignBinding("sync.holdSync", { key: "p" });
-    expect(getEffectiveBinding("timeline.togglePreview")).toEqual({ key: "p" });
-    expect(getEffectiveBinding("sync.holdSync")).toEqual({ key: "p" });
-  });
 
   describe("invariants", () => {
     it("leaves no conflict behind", () => {

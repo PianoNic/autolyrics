@@ -1,8 +1,5 @@
 import { instanceCount, instanceOrdinal } from "@/domain/instance/enumerate";
-import { LYRICS_FORMATS_PROSE } from "@/domain/lyrics-file/supported-formats";
-import { useDualClickImport } from "@/hooks/useDualClickImport";
 import { useConfirm } from "@/stores/confirm-store";
-import { useImportModal, useImportModalStore, useLastImportResult } from "@/stores/import-modal-store";
 import { isAnyModalOpen } from "@/stores/modal-stack";
 import { useProjectStore } from "@/stores/project";
 import { useSettingsStore } from "@/stores/settings";
@@ -19,27 +16,21 @@ import { classifyLine, extractBackgroundVocals, extractInlineFromLine } from "@/
 import { remapWordTextsPreservingTiming } from "@/domain/word/remap-text";
 import { stripSplitCharacter } from "@/utils/split-character";
 import { AgentManager } from "@/views/edit/agent-manager";
-import { ImportSuccessBanner } from "@/views/edit/import-success-banner";
 import { decideEditTextAction } from "@/views/edit/decide-edit-text-action";
 import { detachInstancesFromLines } from "@/views/edit/diff-edit-text";
 import { linesToEditText } from "@/views/edit/edit-text";
 import { parseLyrics } from "@/views/edit/parse-lyrics";
 import { useComposedTextareaChange, useEditTextCaret } from "@/views/edit/use-edit-text-caret";
 import type { ParsedLine } from "@/views/edit/parse-lyrics";
-import { importLyricsFile, useImportContext } from "@/views/lyrics-import-modal/import-lyrics";
 import { pluralize, pluralWord } from "@/utils/pluralize";
-import { IconAlertTriangle, IconFileImport, IconMicrophone } from "@tabler/icons-react";
+import { IconAlertTriangle, IconMicrophone } from "@tabler/icons-react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 // -- Constants ----------------------------------------------------------------
 
 const RUN_DEBOUNCE_MS = 500;
 
-const LYRICS_TEXTAREA_PLACEHOLDER = `Paste your lyrics here, one line at a time...
-
-Or drag and drop a lyrics file (${LYRICS_FORMATS_PROSE})`;
-
-const preventDefaultDragOver = (e: React.DragEvent) => e.preventDefault();
+const LYRICS_TEXTAREA_PLACEHOLDER = "Paste your lyrics here, one line at a time...";
 
 // -- Components ---------------------------------------------------------------
 
@@ -265,9 +256,6 @@ const EditPanel: React.FC = () => {
   const groups = useProjectStore((s) => s.groups);
   const activeTab = useProjectStore((s) => s.activeTab);
   const confirm = useConfirm();
-  const openImportModal = useImportModal();
-  const lastImportResult = useLastImportResult();
-  const dropImportContext = useImportContext("Drop");
   const mergeStandaloneBackgroundLines = useSettingsStore((s) => s.mergeStandaloneBackgroundLines);
   const preserveBracketsOnExtraction = useSettingsStore((s) => s.preserveBracketsOnExtraction);
 
@@ -545,8 +533,6 @@ const EditPanel: React.FC = () => {
         return;
       }
 
-      useImportModalStore.getState().clearImportResult();
-
       if (action.kind === "noop") {
         showEditText(text, text, textarea);
         return;
@@ -580,24 +566,8 @@ const EditPanel: React.FC = () => {
   );
   const textareaChange = useComposedTextareaChange(setRawText, applyTextareaText);
 
-  const importTriggers = useDualClickImport(openImportModal);
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      const file = e.dataTransfer.files[0];
-      if (file) void importLyricsFile(file, dropImportContext);
-    },
-    [dropImportContext],
-  );
-
   return (
-    <div
-      data-tour="edit-panel"
-      className="flex flex-col flex-1 gap-4 p-4 overflow-hidden"
-      onDrop={handleDrop}
-      onDragOver={preventDefaultDragOver}
-    >
+    <div data-tour="edit-panel" className="flex flex-col flex-1 gap-4 p-4 overflow-hidden">
       <div className="flex items-center justify-between select-none">
         <h2 className="text-lg font-medium">Lyrics Editor</h2>
         <div className="flex items-center gap-3">
@@ -611,26 +581,8 @@ const EditPanel: React.FC = () => {
             <IconMicrophone className="size-4" />
             Extract background vocals
           </Button>
-          <Button
-            hasIcon
-            onClick={importTriggers.onClick}
-            onDoubleClick={importTriggers.onDoubleClick}
-            title="Click to search, paste, or upload. Double-click to upload a file directly."
-          >
-            <IconFileImport className="size-4" />
-            Import Lyrics
-          </Button>
-          {importTriggers.fileInput}
         </div>
       </div>
-
-      {lastImportResult && (
-        <ImportSuccessBanner
-          result={lastImportResult.parsed}
-          filename={lastImportResult.source.filename}
-          onDismiss={() => useImportModalStore.getState().clearImportResult()}
-        />
-      )}
 
       <BracketWarning count={bracketCount} />
 

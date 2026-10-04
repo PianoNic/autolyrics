@@ -52,4 +52,4 @@ function offsetTemplateWords(words: WordTemplate[], instanceStart: number): Word
 // -- Exports ------------------------------------------------------------------
 
 export { wordsToTemplate, offsetTemplateWords };
-export type { LinkGroup, WordTemplate, LineTemplate };
+export type { LinkGroup, LineTemplate };

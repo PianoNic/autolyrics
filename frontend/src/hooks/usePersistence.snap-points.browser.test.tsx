@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { renderHook } from "vitest-browser-react";
 import { DEFAULT_AGENTS } from "@/domain/agent/colors";
 import { usePersistence } from "@/hooks/usePersistence";
-import { useVocalOnsetSnapPoints } from "@/hooks/useVocalOnsetSnapPoints";
 import { clearCurrentProject, type SavedProject, saveAudioFile, saveCurrentProject } from "@/lib/persistence";
 import { PROJECT_STORE_NAME, setInStore } from "@/lib/persistence-idb";
 import { useProjectStore } from "@/stores/project";
@@ -32,7 +31,6 @@ async function waitForCustomSnapPoints(expected: number[]): Promise<void> {
 
 const LoadHarness: React.FC = () => {
   usePersistence();
-  useVocalOnsetSnapPoints();
   return null;
 };
 
@@ -82,7 +80,6 @@ describe("usePersistence · customSnapPoints hydration", () => {
       audioSource: { kind: "file", name: "silence.mp3" },
       dismissedSuggestions: [],
       dismissedExplicitSuggestions: [],
-      currentStem: "original",
       primingStripped: false,
     };
     await setInStore(PROJECT_STORE_NAME, "current", legacyRecord);
@@ -95,7 +92,7 @@ describe("usePersistence · customSnapPoints hydration", () => {
     expect(useProjectStore.getState().customSnapPoints).toEqual([]);
   });
 
-  it("regression: a saved project's markers survive the audio-source clear fired during load", async () => {
+  it("regression: a saved project's markers survive the audio source being restored during load", async () => {
     await saveAudioFile(createMp3File());
     await saveCurrentProject(
       createProjectSaveInput({

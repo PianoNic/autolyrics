@@ -5,23 +5,17 @@ import { GettingStartedSection } from "@/ui/help-sections/getting-started";
 describe("GettingStartedSection", () => {
   it("renders the section content", async () => {
     const screen = await render(<GettingStartedSection />);
-    await expect.element(screen.getByRole("heading", { name: "1. Import your audio" })).toBeInTheDocument();
+    await expect.element(screen.getByRole("heading", { name: "1. Check the flagged lines" })).toBeInTheDocument();
   });
 
-  it("renders inline shortcut key badges", async () => {
+  it("renders the tab shortcuts as inline key badges", async () => {
     const screen = await render(<GettingStartedSection />);
-    await expect.poll(() => screen.container.querySelectorAll("[data-inline-key-badge]").length).toBeGreaterThan(0);
+    await expect.poll(() => screen.container.querySelectorAll("[data-inline-key-badge]").length).toBe(3);
   });
 
-  it("names every supported lyrics format in the drop-a-file step", async () => {
+  it("does not send the reader to tabs the editor no longer has", async () => {
     const screen = await render(<GettingStartedSection />);
-    expect(screen.container.textContent).toContain("lyrics file (.txt, .lrc, .srt, .ttml, .qrc)");
-  });
-
-  it("sandboxes the embedded tutorial iframe", async () => {
-    const screen = await render(<GettingStartedSection />);
-    const iframe = screen.container.querySelector('iframe[title="Composer tutorial"]');
-    expect(iframe).not.toBeNull();
-    expect(iframe?.getAttribute("sandbox")).toBe("allow-scripts allow-same-origin allow-presentation allow-popups");
+    const text = screen.container.textContent ?? "";
+    for (const tab of ["Import tab", "Sync tab", "Export", "YouTube"]) expect(text).not.toContain(tab);
   });
 });

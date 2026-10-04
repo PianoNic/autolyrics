@@ -6,7 +6,7 @@ import { DEFAULT_AGENTS } from "@/domain/agent/colors";
 import { getPersistenceSettled } from "@/lib/persistence-settled";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
-import { parseLyricsFile } from "@/utils/lyrics-parsers";
+import { parseTtml } from "@/utils/lyrics-parsers/ttml";
 import { useEffect } from "react";
 import { toast } from "sonner";
 
@@ -22,7 +22,9 @@ function reviewChecks(lyrics: JobLyrics): ReviewCheck[] {
     const bounds = lineBounds(line);
     if (flagged.length === 0 || !bounds) return [];
     const words = flagged.map((word) => word.text.trim()).join(", ");
-    return [{ begin: bounds.begin, label: lineDisplay(line), reason: `${words}: ${describeFlags(flagged[0])}`, done: false }];
+    return [
+      { begin: bounds.begin, label: lineDisplay(line), reason: `${words}: ${describeFlags(flagged[0])}`, done: false },
+    ];
   });
 }
 
@@ -75,7 +77,7 @@ function useImportFromJob(): void {
         if (useJobLinkStore.getState().jobId !== jobId) await saveLinkedJob();
         if (cancelled) return;
 
-        const parsed = parseLyricsFile("lyrics.ttml", files.ttml);
+        const parsed = parseTtml(files.ttml);
         if (parsed.lines.length === 0) throw new Error("the job has no lyrics");
 
         const project = useProjectStore.getState();

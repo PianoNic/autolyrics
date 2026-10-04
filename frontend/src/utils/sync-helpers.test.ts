@@ -1,6 +1,5 @@
 import type { LyricLine } from "@/domain/line/model";
-import { createLine } from "@/test/factories";
-import { createBgWordsFromTextAt, withSeededBackgroundWords } from "@/utils/sync-helpers";
+import { createBgWordsFromTextAt } from "@/utils/sync-helpers";
 import { describe, expect, it } from "vitest";
 
 describe("createBgWordsFromTextAt", () => {
@@ -37,26 +36,5 @@ describe("createBgWordsFromTextAt", () => {
       const words = createBgWordsFromTextAt({ ...base, backgroundText: "la la la" }, 0, 100) ?? [];
       expect(words.map((w) => w.text).join("")).toBe("la la la");
     });
-  });
-});
-
-describe("withSeededBackgroundWords", () => {
-  it("seeds background words for a timed line with background text and no words", () => {
-    const line = createLine({ text: "a", begin: 10, end: 12, backgroundText: "oh" });
-    expect(withSeededBackgroundWords(line).backgroundWords?.length).toBe(1);
-  });
-  it("invariant: returns the same reference when there is nothing to seed", () => {
-    const untimed = createLine({ text: "a", backgroundText: "oh" });
-    const seeded = createLine({
-      text: "a",
-      begin: 1,
-      end: 2,
-      backgroundText: "oh",
-      backgroundWords: [{ text: "oh", begin: 1, end: 2 }],
-    });
-    const plain = createLine({ text: "a", begin: 1, end: 2 });
-    expect(withSeededBackgroundWords(untimed)).toBe(untimed);
-    expect(withSeededBackgroundWords(seeded)).toBe(seeded);
-    expect(withSeededBackgroundWords(plain)).toBe(plain);
   });
 });

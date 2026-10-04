@@ -1,10 +1,6 @@
 packages:
   - "."
 minimumReleaseAge: 10080
-minimumReleaseAgeExclude:
-  - "@braccato/core"
-  - "@braccato/parsers"
-  - "@braccato/types"
 trustPolicy: no-downgrade
 trustPolicyExclude:
   - "semver@6.3.1"
@@ -18,5 +14,3 @@ peerDependencyRules:
 allowBuilds:
   "@biomejs/biome": false
   esbuild: false
-  protobufjs: false
-  sharp: false

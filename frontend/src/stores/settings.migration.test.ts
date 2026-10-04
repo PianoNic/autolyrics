@@ -87,30 +87,39 @@ describe("previewSidebarWidth", () => {
   });
 });
 
-describe("previewRenderer migration", () => {
-  it("moves a pre-Spicy blob still on the old Braccato default to Spicy", async () => {
-    await rehydrateAt(6, legacyBlob({ previewRenderer: "braccato" }));
-    expect(useSettingsStore.getState().previewRenderer).toBe("spicy");
+describe("retired settings", () => {
+  const retired = {
+    previewRenderer: "braccato",
+    autoSeparateOnImport: true,
+    vocalModelVariant: "fp16",
+    vocalOnsetSnap: false,
+    cobaltInstances: [{ id: "c1", label: "Mine", url: "https://cobalt.example" }],
+    selectedCobaltInstanceId: "c1",
+    cobaltInstanceStatus: {},
+    experiments: { youtubeBridge: true },
+    composerBridgeUrl: "http://127.0.0.1:1",
+    redoPreroll: 0.5,
+    confirmReplaceProjectFromHash: false,
+    confirmReplaceLyrics: false,
+    confirmSyncReset: false,
+    confirmClearProject: false,
+    confirmClearImportedSongDetails: false,
+  };
+
+  it("drops the keys of removed features from an older blob", () => {
+    const migrated = migrateSettingsForTest(legacyBlob(retired), 7) as Record<string, unknown>;
+    for (const key of Object.keys(retired)) expect(migrated).not.toHaveProperty(key);
   });
 
-  it("keeps a deliberate am-lyrics pick from before Spicy", async () => {
-    await rehydrateAt(6, legacyBlob({ previewRenderer: "am-lyrics" }));
-    expect(useSettingsStore.getState().previewRenderer).toBe("am-lyrics");
+  it("keeps the rest of the blob while dropping them", async () => {
+    await rehydrateAt(7, legacyBlob({ ...retired, defaultZoom: 220, followPlayhead: false }));
+    const state = useSettingsStore.getState() as unknown as Record<string, unknown>;
+    expect(state.defaultZoom).toBe(220);
+    expect(state.followPlayhead).toBe(false);
+    for (const key of Object.keys(retired)) expect(state).not.toHaveProperty(key);
   });
 
-  it("keeps Braccato when it was picked after Spicy became the default", async () => {
-    await rehydrateAt(7, legacyBlob({ previewRenderer: "braccato" }));
-    expect(useSettingsStore.getState().previewRenderer).toBe("braccato");
-  });
-
-  it("falls back to Spicy for a renderer this build does not know", () => {
-    const migrated = migrateSettingsForTest(legacyBlob({ previewRenderer: "retired-engine" }), 7) as {
-      previewRenderer: string;
-    };
-    expect(migrated.previewRenderer).toBe("spicy");
-  });
-
-  it("invariant: a fresh profile renders the preview with Spicy", () => {
-    expect(DEFAULTS.previewRenderer).toBe("spicy");
+  it("invariant: a fresh profile has none of them", () => {
+    for (const key of Object.keys(retired)) expect(DEFAULTS).not.toHaveProperty(key);
   });
 });

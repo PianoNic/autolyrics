@@ -34,12 +34,4 @@ interface TranslationTrack extends LanguageContentMeta {
 
 type TranslationTracks = Record<string, TranslationTrack>;
 
-export type {
-  LanguageContentMeta,
-  LanguageContentOrigin,
-  TransliterationAlignmentStatus,
-  TranslationTrack,
-  TranslationTracks,
-  TransliterationSegment,
-  TransliterationTrack,
-};
+export type { TransliterationAlignmentStatus, TranslationTracks, TransliterationSegment, TransliterationTrack };

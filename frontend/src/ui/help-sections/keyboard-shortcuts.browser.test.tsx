@@ -10,7 +10,7 @@ describe("KeyboardShortcutsSection", () => {
 
   it("lists shortcut descriptions", async () => {
     const screen = await render(<KeyboardShortcutsSection />);
-    await expect.element(screen.getByText("Go to Import tab")).toBeInTheDocument();
+    await expect.element(screen.getByText("Go to Timeline tab")).toBeInTheDocument();
   });
 
   it("lists the rolling edit and split word shortcuts", async () => {

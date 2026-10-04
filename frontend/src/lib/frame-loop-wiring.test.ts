@@ -66,7 +66,7 @@ describe("wireFrameLoop store subscriptions", () => {
     it("stops waking once disposed", () => {
       const dispose = wire();
       dispose();
-      expect(framesAfter(() => useProjectStore.setState({ activeTab: "sync" }))).toBe(0);
+      expect(framesAfter(() => useProjectStore.setState({ activeTab: "preview" }))).toBe(0);
     });
   });
 
@@ -84,7 +84,7 @@ describe("wireFrameLoop store subscriptions", () => {
       const disposeSecond = wire();
       disposeFirst();
       disposeSecond();
-      expect(framesAfter(() => useProjectStore.setState({ activeTab: "export" }))).toBe(0);
+      expect(framesAfter(() => useProjectStore.setState({ activeTab: "preview" }))).toBe(0);
     });
 
     it("tolerates the same wiring being disposed twice", () => {

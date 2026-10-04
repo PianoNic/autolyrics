@@ -59,11 +59,21 @@ function dispatchWheel(
 }
 
 describe("TimelinePanel", () => {
-  it("shows the audio drop zone when no source is loaded", async () => {
+  it("points back to the start page when no song is open", async () => {
     useAudioStore.setState({ source: null });
     useProjectStore.setState({ lines: [] });
     const screen = await render(<TimelinePanel />);
-    await expect.element(screen.getByText("Drop audio file here")).toBeInTheDocument();
+    await expect.element(screen.getByText("No song open")).toBeInTheDocument();
+    await expect
+      .element(screen.getByRole("link", { name: "Pick a song on the start page" }))
+      .toHaveAttribute("href", "/");
+  });
+
+  it("points back to the start page when the song has no lyrics", async () => {
+    useAudioStore.setState({ source: { type: "file", file: createAudioFile() } });
+    useProjectStore.setState({ lines: [] });
+    const screen = await render(<TimelinePanel />);
+    await expect.element(screen.getByText("No song open")).toBeInTheDocument();
   });
 
   it("renders the Timeline header once an audio source is set", async () => {

@@ -34,11 +34,7 @@ const STATE_WRITER_PATTERNS: RegExp[] = [
   /\.setDismissedSuggestions\b/,
   /\.setDismissedExplicitSuggestions\b/,
   /\.setSource\b/,
-  /\.setYouTubeSource\b/,
-  /\.setYouTubeFile\b/,
   /\.reset\(\)/,
-  // `useLoadYouTubeSource` indirectly writes audio + project via its returned callback.
-  /useLoadYouTubeSource\b/,
 ];
 
 const SETTLED_IMPORT_PATTERN = /from\s+["']@\/lib\/persistence-settled["']/;

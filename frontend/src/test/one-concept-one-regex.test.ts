@@ -27,7 +27,6 @@ const PRIMITIVES = new Set<string>(["\\r?\\n", "\\s+", " +$", "[a-zA-Z0-9]"]);
 // an entry, and the stale-entry test below forces deletion once one is migrated.
 const BASELINE_DEBT = new Map<string, string>([
   ["^v(\\d+)$", "agent voice numbering, wants an owner under domain/agent/"],
-  ["\\/$", "base URL normalisation, already owned by utils/url.ts"],
 ]);
 
 // -- Helpers ------------------------------------------------------------------

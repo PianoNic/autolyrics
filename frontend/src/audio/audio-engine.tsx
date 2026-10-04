@@ -1,10 +1,8 @@
 import { decodeAudioToWav, needsWavConversion } from "@/audio/audio-decode";
 import { bindAudioStateEvents } from "@/audio/audio-state-events";
 import { scrubPreview } from "@/audio/scrub-preview";
-import { scrubStemRouter } from "@/audio/scrub-stem-router";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
-import { useSeparationStore } from "@/stores/separation";
 import { useSettingsStore } from "@/stores/settings";
 import { useEffect, useRef } from "react";
 
@@ -26,7 +24,6 @@ function playOrRevert(audio: HTMLAudioElement, setIsPlaying: (playing: boolean) 
 
 const AudioEngine: React.FC = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const originalUrlRef = useRef<string | null>(null);
 
   const source = useAudioStore((s) => s.source);
   const isPlaying = useAudioStore((s) => s.isPlaying);
@@ -34,30 +31,21 @@ const AudioEngine: React.FC = () => {
   const preservePitch = useSettingsStore((s) => s.preservePitch);
   const volume = useAudioStore((s) => s.volume);
   const isMuted = useAudioStore((s) => s.isMuted);
-  const audioElement = useAudioStore((s) => s.audioElement);
   const setCurrentTime = useAudioStore((s) => s.setCurrentTime);
   const setDuration = useAudioStore((s) => s.setDuration);
   const setIsPlaying = useAudioStore((s) => s.setIsPlaying);
   const setIsLoading = useAudioStore((s) => s.setIsLoading);
   const registerAudioElement = useAudioStore((s) => s.registerAudioElement);
 
-  const currentStem = useSeparationStore((s) => s.currentStem);
-  const stemUrls = useSeparationStore((s) => s.stemUrls);
-
   // react-doctor-disable-next-line react-doctor/effect-needs-cleanup -- teardown/clearSlowLoading run from the returned cleanup and revoke every listener, timer and object URL; the async setup() indirection hides that from static analysis
   useEffect(() => {
     if (!source) {
       registerAudioElement(null);
-      scrubStemRouter.clearCache();
+      scrubPreview.useBuffer(null);
       return;
     }
 
-    const playableFile = source.type === "file" ? source.file : source.type === "youtube" ? source.file : null;
-    if (!playableFile) {
-      registerAudioElement(null);
-      scrubStemRouter.clearCache();
-      return;
-    }
+    const playableFile = source.file;
 
     let aborted = false;
     let teardown: (() => void) | null = null;
@@ -103,11 +91,11 @@ const AudioEngine: React.FC = () => {
         if (aborted) return;
         const audioBuffer = await scrubPreview.decode(bytes);
         if (aborted) return;
-        scrubStemRouter.setOriginalBuffer(audioBuffer);
+        scrubPreview.useBuffer(audioBuffer);
       } catch (err) {
         if (aborted) return;
         console.warn(LOG_PREFIX, "scrub-preview decode failed", err);
-        scrubStemRouter.setOriginalBuffer(null);
+        scrubPreview.useBuffer(null);
       }
     };
     void loadScrubBuffer();
@@ -141,7 +129,6 @@ const AudioEngine: React.FC = () => {
       audio.style.display = "none";
       document.body.appendChild(audio);
       audioRef.current = audio;
-      originalUrlRef.current = objectUrl;
       registerAudioElement(audio);
       if (stripped !== null) useProjectStore.getState().setPrimingStripped(stripped);
       if (initialIsPlaying) playOrRevert(audio, setIsPlaying);
@@ -169,7 +156,6 @@ const AudioEngine: React.FC = () => {
         audio.src = "";
         audio.remove();
         if (audioRef.current === audio) audioRef.current = null;
-        if (originalUrlRef.current === objectUrl) originalUrlRef.current = null;
         URL.revokeObjectURL(objectUrl);
       };
     };
@@ -181,7 +167,7 @@ const AudioEngine: React.FC = () => {
       clearSlowLoading();
       if (teardown) teardown();
       registerAudioElement(null);
-      scrubStemRouter.clearCache();
+      scrubPreview.useBuffer(null);
     };
   }, [source, setDuration, setCurrentTime, setIsPlaying, setIsLoading, registerAudioElement]);
 
@@ -204,31 +190,6 @@ const AudioEngine: React.FC = () => {
     audio.volume = volume;
     audio.muted = isMuted;
   }, [playbackRate, preservePitch, volume, isMuted]);
-
-  useEffect(() => {
-    const audio = audioElement;
-    if (!audio) return;
-    const stemUrl = currentStem !== "original" ? stemUrls[currentStem] : null;
-    const targetUrl = stemUrl ?? originalUrlRef.current;
-    if (!targetUrl || audio.src === targetUrl) return;
-    const wasPlaying = !audio.paused;
-    const time = audio.currentTime;
-    const {
-      playbackRate: currentPlaybackRate,
-      volume: currentVolume,
-      isMuted: currentIsMuted,
-    } = useAudioStore.getState();
-    audio.src = targetUrl;
-    audio.currentTime = time;
-    audio.playbackRate = currentPlaybackRate;
-    audio.volume = currentVolume;
-    audio.muted = currentIsMuted;
-    if (wasPlaying) playOrRevert(audio, setIsPlaying);
-  }, [currentStem, stemUrls, audioElement, setIsPlaying]);
-
-  useEffect(() => {
-    scrubStemRouter.selectStem(currentStem, () => stemUrls[currentStem]);
-  }, [currentStem, stemUrls]);
 
   return null;
 };

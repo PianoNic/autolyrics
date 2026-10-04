@@ -132,7 +132,7 @@ const StartPage: React.FC = () => {
             autolyrics
           </h1>
           <p className="text-sm text-composer-text-muted">
-            Paste a song link and get word-synced lyrics. Fix anything you like afterwards, or open the full editor.
+            Paste a song link and get word-synced lyrics. Fix anything you like afterwards in the editor.
           </p>
         </header>
 
@@ -162,9 +162,7 @@ const StartPage: React.FC = () => {
           </label>
 
           <details className="text-sm">
-            <summary className="cursor-pointer text-composer-text-muted hover:text-composer-text">
-              Options
-            </summary>
+            <summary className="cursor-pointer text-composer-text-muted hover:text-composer-text">Options</summary>
             <div className="mt-3 grid grid-cols-2 gap-3">
               <label className="flex flex-col gap-1">
                 <span className="text-xs text-composer-text-muted">Title (if detection gets it wrong)</span>
@@ -192,8 +190,11 @@ const StartPage: React.FC = () => {
         <RecentJobs jobs={jobs} onDelete={remove} />
 
         <footer className="text-xs text-composer-text-faint">
-          Built on <a href="https://github.com/better-lyrics/composer" className="underline">Composer</a> by
-          Better Lyrics. <Link to="/editor" className="underline">Open the editor</Link> without a song.
+          Built on{" "}
+          <a href="https://github.com/better-lyrics/composer" className="underline">
+            Composer
+          </a>{" "}
+          by Better Lyrics.
         </footer>
       </div>
     </main>

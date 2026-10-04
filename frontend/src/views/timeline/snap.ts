@@ -3,7 +3,7 @@ import type { LyricLine } from "@/domain/line/model";
 
 // -- Types ---------------------------------------------------------------------
 
-type AnchorKind = "word-begin" | "word-end" | "line-begin" | "line-end" | "playhead" | "vocal-onset" | "custom";
+type AnchorKind = "word-begin" | "word-end" | "line-begin" | "line-end" | "playhead" | "custom";
 
 interface SnapAnchor {
   t: number;
@@ -48,7 +48,6 @@ function collectSnapAnchors(
   lines: LyricLine[],
   selfIds: Set<SelfKey>,
   playheadTime: number | null,
-  vocalOnsetTimes: number[] = [],
   includeTimelineAnchors = true,
   customSnapTimes: number[] = [],
 ): SnapAnchor[] {
@@ -119,10 +118,6 @@ function collectSnapAnchors(
     if (playheadTime !== null) {
       anchors.push({ t: playheadTime, kind: "playhead", label: "playhead" });
     }
-  }
-
-  for (const t of vocalOnsetTimes) {
-    if (Number.isFinite(t) && t >= 0) anchors.push({ t, kind: "vocal-onset", label: "vocal onset" });
   }
 
   for (const t of customSnapTimes) {

@@ -111,9 +111,7 @@ interface Health {
   lyrics_api_key: boolean;
 }
 
-type StreamPayload =
-  | { type: "status"; status: JobStatus; error: string | null }
-  | { type: "event"; event: JobEvent };
+type StreamPayload = { type: "status"; status: JobStatus; error: string | null } | { type: "event"; event: JobEvent };
 
 // -- Errors -------------------------------------------------------------------
 
@@ -181,20 +179,14 @@ const autolyrics = {
 
 export { ApiError, autolyrics };
 export type {
-  CreateJobInput,
   Health,
   JobDetail,
   JobEvent,
   JobLyrics,
-  JobReport,
   JobStatus,
   JobSummary,
   LyricLine,
   LyricWord,
-  PolishChange,
-  RealignResult,
-  SaveResult,
   Stage,
-  StageStatus,
   StreamPayload,
 };

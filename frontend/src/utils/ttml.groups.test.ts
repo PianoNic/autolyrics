@@ -1,7 +1,7 @@
 import type { Agent } from "@/domain/agent/model";
 import type { LinkGroup } from "@/domain/group/template";
 import type { ProjectMetadata } from "@/domain/project/metadata";
-import { parseLyricsFile } from "@/utils/lyrics-parsers";
+import { parseTtml } from "@/utils/lyrics-parsers/ttml";
 import { generateTTML } from "@/utils/ttml";
 import { describe, expect, it } from "vitest";
 
@@ -131,7 +131,7 @@ describe("ttml import · groups registry", () => {
       { id: "g2", label: "Verse", color: "#60a5fa", templateVersion: 1 },
     ];
     const ttml = generateTTML({ metadata: baseMetadata, agents: baseAgents, lines: [], groups });
-    const result = parseLyricsFile("test.ttml", ttml);
+    const result = parseTtml(ttml);
 
     expect(result.groups).toHaveLength(2);
     expect(result.groups?.find((g) => g.id === "g1")?.label).toBe("Chorus");
@@ -141,7 +141,7 @@ describe("ttml import · groups registry", () => {
 
   it("returns no groups when none in TTML", () => {
     const ttml = generateTTML({ metadata: baseMetadata, agents: baseAgents, lines: [] });
-    const result = parseLyricsFile("test.ttml", ttml);
+    const result = parseTtml(ttml);
     expect(result.groups).toBeUndefined();
   });
 });
@@ -167,7 +167,7 @@ describe("ttml import · per-line group attrs", () => {
       ],
       groups,
     });
-    const result = parseLyricsFile("test.ttml", ttml);
+    const result = parseTtml(ttml);
 
     expect(result.lines[0].groupId).toBe("g1");
     expect(result.lines[0].instanceIdx).toBe(2);
@@ -194,7 +194,7 @@ describe("ttml import · per-line group attrs", () => {
       ],
       groups,
     });
-    const result = parseLyricsFile("test.ttml", ttml);
+    const result = parseTtml(ttml);
     expect(result.lines[0].detached).toBe(true);
   });
 
@@ -216,7 +216,7 @@ describe("ttml import · per-line group attrs", () => {
       ],
       groups: [],
     });
-    const result = parseLyricsFile("test.ttml", ttml);
+    const result = parseTtml(ttml);
     expect(result.lines[0].groupId).toBeUndefined();
   });
 
@@ -227,7 +227,7 @@ describe("ttml import · per-line group attrs", () => {
         <p begin="00:00:00.000" end="00:00:01.000" ttm:agent="v1">Hello</p>
       </div></body>
     </tt>`;
-    const result = parseLyricsFile("flat.ttml", flatTtml);
+    const result = parseTtml(flatTtml);
     expect(result.lines[0].text).toBe("Hello");
     expect(result.lines[0].groupId).toBeUndefined();
     expect(result.groups).toBeUndefined();
@@ -247,7 +247,7 @@ describe("ttml namespace · betterlyrics rebrand + legacy compat", () => {
 
   it("parses a legacy file that declares the old namespace on the composer prefix", () => {
     const legacy = `<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata" xmlns:composer="${OLD_NS}"><head><metadata><ttm:agent type="person" xml:id="v1"/><composer:groups><composer:group id="g1" label="Chorus" color="#f472b6" templateVersion="2"/></composer:groups></metadata></head><body><div><p begin="00:01.000" end="00:02.000" ttm:agent="v1" composer:groupId="g1" composer:instanceIdx="1" composer:templateLineIdx="0">hi</p></div></body></tt>`;
-    const result = parseLyricsFile("legacy.ttml", legacy);
+    const result = parseTtml(legacy);
 
     expect(result.groups).toHaveLength(1);
     expect(result.groups?.[0].label).toBe("Chorus");
@@ -258,7 +258,7 @@ describe("ttml namespace · betterlyrics rebrand + legacy compat", () => {
 
   it("parses a legacy file that binds the old namespace to a non-composer prefix", () => {
     const legacy = `<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata" xmlns:c="${OLD_NS}"><head><metadata><ttm:agent type="person" xml:id="v1"/><c:groups><c:group id="g1" label="Chorus" color="#f472b6" templateVersion="3"/></c:groups></metadata></head><body><div><p begin="00:01.000" end="00:02.000" ttm:agent="v1" c:groupId="g1" c:instanceIdx="2" c:templateLineIdx="0" c:detached="true">hi</p></div></body></tt>`;
-    const result = parseLyricsFile("legacy-prefix.ttml", legacy);
+    const result = parseTtml(legacy);
 
     expect(result.groups).toHaveLength(1);
     expect(result.groups?.[0].templateVersion).toBe(3);
@@ -316,7 +316,7 @@ describe("ttml export · explicit word attribute", () => {
 
   it("round-trip: AMLL amll:obscene import → export normalizes to composer:explicit", () => {
     const amll = `<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata"><head><metadata><ttm:agent type="person" xml:id="v1"/></metadata></head><body><div><p begin="00:01.000" end="00:02.000" ttm:agent="v1"><span begin="00:01.000" end="00:01.500">clean</span> <span begin="00:01.500" end="00:02.000" amll:obscene="true">dirty</span></p></div></body></tt>`;
-    const imported = parseLyricsFile("amll.ttml", amll);
+    const imported = parseTtml(amll);
     expect(imported.lines[0].words![1].explicit).toBe(true);
 
     const exported = generateTTML({
@@ -327,7 +327,7 @@ describe("ttml export · explicit word attribute", () => {
     expect(exported).toMatch(/composer:explicit="true">dirty/);
     expect(exported).not.toContain("amll:obscene");
 
-    const reimported = parseLyricsFile("re.ttml", exported);
+    const reimported = parseTtml(exported);
     expect(reimported.lines[0].words![1].explicit).toBe(true);
   });
 });

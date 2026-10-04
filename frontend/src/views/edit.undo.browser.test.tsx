@@ -305,7 +305,7 @@ describe("editor undo and redo without textarea focus", () => {
 
 describe("editor window undo handler gating", () => {
   it("does not undo when the active tab is not edit", async () => {
-    useProjectStore.setState({ lines: [createLine({ id: "l1", text: "Hello" })], activeTab: "sync" });
+    useProjectStore.setState({ lines: [createLine({ id: "l1", text: "Hello" })], activeTab: "timeline" });
     await render(<EditPanel />);
 
     useProjectStore.getState().updateLineWithHistory("l1", { agentId: "v2" });

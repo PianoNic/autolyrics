@@ -21,12 +21,6 @@ const Harness: React.FC = () => {
 const customMarkers = (container: HTMLElement): NodeListOf<HTMLElement> =>
   container.querySelectorAll<HTMLElement>("[data-snap-marker='custom']");
 
-const flashes = (container: HTMLElement): NodeListOf<HTMLElement> =>
-  container.querySelectorAll<HTMLElement>("[data-snap-marker-flash]");
-
-const onsetLines = (container: HTMLElement): NodeListOf<HTMLElement> =>
-  container.querySelectorAll<HTMLElement>("[data-snap-marker='onset']");
-
 const pinAtTime = (container: HTMLElement, time: number): HTMLElement | null =>
   container.querySelector<HTMLElement>(`[data-snap-marker='custom'][data-snap-marker-time='${time}']`);
 
@@ -39,64 +33,11 @@ const headOf = (marker: HTMLElement): HTMLElement => {
 // -- Tests ---------------------------------------------------------------------
 
 describe("SnapMarkersOverlay placement animation", () => {
-  it("flashes a custom pin that is seeded on top of an onset", async () => {
-    useSettingsStore.setState({ vocalOnsetSnap: true, timelineSnapThreshold: 12 });
-    useTimelineStore.setState({
-      zoom: 100,
-      scrollLeft: 0,
-      vocalOnsetSnapPoints: [2],
-    });
-    useProjectStore.setState({ customSnapPoints: snapPoints([2]) });
-
-    const screen = await render(<Harness />);
-    await expect.poll(() => flashes(screen.container)).toHaveLength(1);
-  });
-
-  it("does not flash a custom pin placed away from every onset", async () => {
-    useSettingsStore.setState({ vocalOnsetSnap: true, timelineSnapThreshold: 12 });
-    useTimelineStore.setState({
-      zoom: 100,
-      scrollLeft: 0,
-      vocalOnsetSnapPoints: [2],
-    });
-    useProjectStore.setState({ customSnapPoints: snapPoints([5]) });
-
-    const screen = await render(<Harness />);
-    await expect.poll(() => customMarkers(screen.container)).toHaveLength(1);
-    expect(flashes(screen.container)).toHaveLength(0);
-  });
-
-  it("fires a flash when a dragged pin lands on an onset", async () => {
-    useSettingsStore.setState({ vocalOnsetSnap: true, timelineSnapThreshold: 12 });
-    useTimelineStore.setState({
-      zoom: 100,
-      scrollLeft: 0,
-      vocalOnsetSnapPoints: [5],
-    });
-    useProjectStore.setState({ customSnapPoints: snapPoints([2]) });
-
-    const screen = await render(<Harness />);
-    await expect.poll(() => flashes(screen.container)).toHaveLength(0);
-
-    const head = headOf(customMarkers(screen.container)[0]);
-    const rect = screen.container.firstElementChild?.getBoundingClientRect();
-    if (!rect) throw new Error("scroll container rect missing");
-
-    head.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, pointerId: 1 }));
-    const onOnsetClientX = rect.left + GUTTER_WIDTH + 5 * 100;
-    head.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX: onOnsetClientX, pointerId: 1 }));
-
-    await expect.poll(() => flashes(screen.container)).toHaveLength(1);
-
-    head.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 1 }));
-  });
-
   it("keeps a single pin mounted across a drag (stable id reuses the DOM node)", async () => {
-    useSettingsStore.setState({ vocalOnsetSnap: false, timelineSnapThreshold: 12 });
+    useSettingsStore.setState({ timelineSnapThreshold: 12 });
     useTimelineStore.setState({
       zoom: 100,
       scrollLeft: 0,
-      vocalOnsetSnapPoints: [],
     });
     useProjectStore.setState({ customSnapPoints: snapPoints([2]) });
 
@@ -121,72 +62,12 @@ describe("SnapMarkersOverlay placement animation", () => {
 
     head.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 1 }));
   });
-
-  it("does not flash unrelated pins when the array re-sorts mid-drag", async () => {
-    useSettingsStore.setState({ vocalOnsetSnap: true, timelineSnapThreshold: 12 });
-    useTimelineStore.setState({
-      zoom: 100,
-      scrollLeft: 0,
-      vocalOnsetSnapPoints: [9],
-    });
-    useProjectStore.setState({ customSnapPoints: snapPoints([2, 4]) });
-
-    const screen = await render(<Harness />);
-    await expect.poll(() => customMarkers(screen.container)).toHaveLength(2);
-    expect(flashes(screen.container)).toHaveLength(0);
-
-    const head = headOf(customMarkers(screen.container)[0]);
-    const rect = screen.container.firstElementChild?.getBoundingClientRect();
-    if (!rect) throw new Error("scroll container rect missing");
-
-    head.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, button: 0, pointerId: 1 }));
-    // Drag the first pin past the second; the store re-sorts but neither pin
-    // is on an onset, so no flash should ever appear.
-    const clientX = rect.left + GUTTER_WIDTH + 6 * 100;
-    head.dispatchEvent(new PointerEvent("pointermove", { bubbles: true, clientX, pointerId: 1 }));
-
-    await expect.poll(() => useProjectStore.getState().customSnapPoints.map((p) => p.time)).toEqual([4, 6]);
-    expect(flashes(screen.container)).toHaveLength(0);
-
-    head.dispatchEvent(new PointerEvent("pointerup", { bubbles: true, pointerId: 1 }));
-  });
-});
-
-describe("SnapMarkersOverlay onset entry stagger", () => {
-  it("gives each onset line the entry class and an increasing staggered delay", async () => {
-    useSettingsStore.setState({ vocalOnsetSnap: true, timelineSnapThreshold: 12 });
-    useTimelineStore.setState({ zoom: 100, scrollLeft: 0, vocalOnsetSnapPoints: [1, 2, 3] });
-    useProjectStore.setState({ customSnapPoints: [] });
-
-    const screen = await render(<Harness />);
-    await expect.poll(() => onsetLines(screen.container)).toHaveLength(3);
-
-    const lines = onsetLines(screen.container);
-    for (const line of lines) expect(line.classList.contains("snap-onset-enter")).toBe(true);
-    expect(lines[0].style.animationDelay).toBe("0ms");
-    expect(lines[1].style.animationDelay).toBe("24ms");
-    expect(lines[2].style.animationDelay).toBe("48ms");
-  });
-
-  it("caps the stagger delay so a large onset count does not crawl in forever", async () => {
-    useSettingsStore.setState({ vocalOnsetSnap: true, timelineSnapThreshold: 12 });
-    const many = Array.from({ length: 120 }, (_, i) => i + 1);
-    useTimelineStore.setState({ zoom: 5, scrollLeft: 0, vocalOnsetSnapPoints: many });
-    useProjectStore.setState({ customSnapPoints: [] });
-
-    const screen = await render(<Harness />);
-    await expect.poll(() => onsetLines(screen.container)).toHaveLength(120);
-
-    const lines = onsetLines(screen.container);
-    expect(lines[70].style.animationDelay).toBe("900ms");
-    expect(lines[119].style.animationDelay).toBe("900ms");
-  });
 });
 
 describe("SnapMarkersOverlay AnimatePresence enter/exit", () => {
   it("renders a new pin element when a point is appended after first render", async () => {
-    useSettingsStore.setState({ vocalOnsetSnap: false, timelineSnapThreshold: 12 });
-    useTimelineStore.setState({ zoom: 100, scrollLeft: 0, vocalOnsetSnapPoints: [] });
+    useSettingsStore.setState({ timelineSnapThreshold: 12 });
+    useTimelineStore.setState({ zoom: 100, scrollLeft: 0 });
     useProjectStore.setState({ customSnapPoints: snapPoints([1, 3]) });
 
     const screen = await render(<Harness />);
@@ -200,8 +81,8 @@ describe("SnapMarkersOverlay AnimatePresence enter/exit", () => {
   });
 
   it("renders a new pin element when a point is inserted in the middle after first render", async () => {
-    useSettingsStore.setState({ vocalOnsetSnap: false, timelineSnapThreshold: 12 });
-    useTimelineStore.setState({ zoom: 100, scrollLeft: 0, vocalOnsetSnapPoints: [] });
+    useSettingsStore.setState({ timelineSnapThreshold: 12 });
+    useTimelineStore.setState({ zoom: 100, scrollLeft: 0 });
     useProjectStore.setState({ customSnapPoints: snapPoints([1, 3]) });
 
     const screen = await render(<Harness />);
@@ -215,8 +96,8 @@ describe("SnapMarkersOverlay AnimatePresence enter/exit", () => {
   });
 
   it("removes a pin from the DOM after delete while the overlay stays mounted", async () => {
-    useSettingsStore.setState({ vocalOnsetSnap: false, timelineSnapThreshold: 12 });
-    useTimelineStore.setState({ zoom: 100, scrollLeft: 0, vocalOnsetSnapPoints: [] });
+    useSettingsStore.setState({ timelineSnapThreshold: 12 });
+    useTimelineStore.setState({ zoom: 100, scrollLeft: 0 });
     useProjectStore.setState({ customSnapPoints: snapPoints([1, 2, 3]) });
 
     const screen = await render(<Harness />);
@@ -233,8 +114,8 @@ describe("SnapMarkersOverlay AnimatePresence enter/exit", () => {
   });
 
   it("does not change the pin count on a move (same ids, one time changed)", async () => {
-    useSettingsStore.setState({ vocalOnsetSnap: false, timelineSnapThreshold: 12 });
-    useTimelineStore.setState({ zoom: 100, scrollLeft: 0, vocalOnsetSnapPoints: [] });
+    useSettingsStore.setState({ timelineSnapThreshold: 12 });
+    useTimelineStore.setState({ zoom: 100, scrollLeft: 0 });
     useProjectStore.setState({ customSnapPoints: snapPoints([2, 4]) });
 
     const screen = await render(<Harness />);

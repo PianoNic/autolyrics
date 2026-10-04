@@ -1,5 +1,4 @@
 import { isWordSelected } from "@/domain/selection/identity";
-import { FileDropZone } from "@/audio/file-drop-zone";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import { getAgentColor } from "@/domain/agent/colors";
@@ -11,8 +10,6 @@ import { useSnapBypass } from "@/views/timeline/use-snap-bypass";
 import { useTimelineSnap } from "@/views/timeline/use-timeline-snap";
 import { ExplicitSuggestionsBanner } from "@/views/timeline/explicit-suggestions-banner";
 import { GroupingSuggestionsBanner } from "@/views/timeline/grouping-suggestions-banner";
-import { useImportModal } from "@/stores/import-modal-store";
-import { EmptyTimelineImport } from "@/views/timeline/empty-timeline-import";
 import { MarqueeSelection } from "@/views/timeline/marquee-selection";
 import { PastePreview } from "@/views/timeline/paste-preview";
 import { TimelineContextMenu } from "@/views/timeline/timeline-context-menu";
@@ -42,7 +39,6 @@ import { useTimelinePan } from "@/views/timeline/use-timeline-pan";
 import { useTimelineWheel } from "@/views/timeline/use-timeline-wheel";
 import { mainBounds } from "@/domain/line/bounds";
 import { getEffectiveLines } from "@/domain/line/effective-words";
-import { useLoadAudioFile } from "@/hooks/useLoadAudioFile";
 import { BLOCK_INSET_PX, bgTrackHeight } from "@/views/timeline/row-geometry";
 import { computeRowLayout, distributeLinesTiming } from "@/views/timeline/utils";
 import { GROUP_HEADER_HEIGHT } from "@/views/timeline/group-header-row";
@@ -88,7 +84,6 @@ const TimelinePanel: React.FC = () => {
   const contentRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [contentHeight, setContentHeight] = useState(400);
-  const openImportModal = useImportModal();
 
   const effectiveLines = useMemo(() => getEffectiveLines(lines), [lines]);
 
@@ -127,8 +122,7 @@ const TimelinePanel: React.FC = () => {
   }, [activeDrag]);
 
   const { marqueeRect, handleMarqueeMouseDown } = useMarquee(scrollContainerRef);
-  const openLyricsModal = useCallback(() => openImportModal(), [openImportModal]);
-  useTimelineKeyboard(scrollContainerRef, effectiveLines, duration, openLyricsModal);
+  useTimelineKeyboard(scrollContainerRef, effectiveLines, duration);
   useTimelineWheel(scrollContainerRef, !!source && lines.length > 0);
   useTimelineFrameWake(scrollContainerRef, contentRef, !!source && lines.length > 0);
 
@@ -186,8 +180,6 @@ const TimelinePanel: React.FC = () => {
     },
     [handlePanMouseDown, handleMarqueeMouseDown, pasteMode],
   );
-
-  const handleAudioDrop = useLoadAudioFile();
 
   const dragColor = activeDrag
     ? getAgentColor(effectiveLines.find((l) => l.id === activeDrag.lineId)?.agentId ?? "")
@@ -313,27 +305,18 @@ const TimelinePanel: React.FC = () => {
     return { cells, anchorWidth: anchorW, anchorHeight: anchorHeight - BLOCK_INSET_PX * 2 };
   }, [activeDrag, zoom, effectiveLines]);
 
-  if (!source) {
+  // Songs arrive from autolyrics with their audio and lyrics; without one there is nothing to lay out.
+  if (!source || lines.length === 0) {
     return (
       <div className="flex flex-col flex-1 overflow-hidden select-none">
         <TimelineHeader />
-        <div className="flex-1 flex flex-col items-center justify-center p-4">
-          <FileDropZone accept="audio/*" onFileDrop={handleAudioDrop}>
-            <IconMusic className="size-12 mb-4 opacity-50 text-composer-text" stroke={1.5} />
-            <p className="text-composer-text-secondary">Drop audio file here</p>
-            <p className="mt-1 text-sm text-composer-text-muted">or click to browse</p>
-            <p className="mt-4 text-xs text-composer-text-muted">Supports MP3, WAV, M4A, OGG, FLAC</p>
-          </FileDropZone>
+        <div className="flex-1 flex flex-col items-center justify-center gap-2 p-4">
+          <IconMusic className="size-12 mb-2 opacity-50 text-composer-text" stroke={1.5} />
+          <p className="text-lg text-composer-text-secondary">No song open</p>
+          <a href="/" className="text-sm underline text-composer-text-muted hover:text-composer-text">
+            Pick a song on the start page
+          </a>
         </div>
-      </div>
-    );
-  }
-
-  if (lines.length === 0) {
-    return (
-      <div className="flex flex-col flex-1 overflow-hidden select-none">
-        <TimelineHeader onImportLyrics={openLyricsModal} />
-        <EmptyTimelineImport openLyricsModal={openLyricsModal} />
       </div>
     );
   }
@@ -383,7 +366,7 @@ const TimelinePanel: React.FC = () => {
       {/* display: contents so the mask root adds a query anchor without a layout box. */}
       <div data-timeline-mask-root className="contents">
         <div data-tour="timeline-panel" className="flex flex-col flex-1 overflow-hidden select-none">
-          <TimelineHeader onImportLyrics={openLyricsModal} scrollContainerRef={scrollContainerRef} />
+          <TimelineHeader scrollContainerRef={scrollContainerRef} />
           <GroupingSuggestionsBanner />
           <ExplicitSuggestionsBanner />
 

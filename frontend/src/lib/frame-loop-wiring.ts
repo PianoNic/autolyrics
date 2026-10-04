@@ -1,13 +1,10 @@
 import { useJobLinkStore } from "@/auto/editor/job-link-store";
 import { holdFrames, wake } from "@/lib/frame-loop";
 import { useAudioStore } from "@/stores/audio";
-import { useAuthStore } from "@/stores/auth";
 import { useConfirmStore } from "@/stores/confirm-store";
 import { useDivergenceStore } from "@/stores/divergence-store";
-import { useImportModalStore } from "@/stores/import-modal-store";
 import { useModalStackStore } from "@/stores/modal-stack";
 import { useProjectStore } from "@/stores/project";
-import { useSeparationStore } from "@/stores/separation";
 import { useSettingsStore } from "@/stores/settings";
 import { useShortcutBindingsStore } from "@/stores/shortcut-bindings";
 import { useThemeStore } from "@/stores/theme";
@@ -81,14 +78,11 @@ function wireFrameLoop(): () => void {
 
   const unsubscribes = [
     useAudioStore.subscribe(syncAudio),
-    useAuthStore.subscribe(wakeFromThisWiring),
     useJobLinkStore.subscribe(wakeFromThisWiring),
     useConfirmStore.subscribe(wakeFromThisWiring),
     useDivergenceStore.subscribe(wakeFromThisWiring),
-    useImportModalStore.subscribe(wakeFromThisWiring),
     useModalStackStore.subscribe(wakeFromThisWiring),
     useProjectStore.subscribe(wakeFromThisWiring),
-    useSeparationStore.subscribe(wakeFromThisWiring),
     useSettingsStore.subscribe(wakeFromThisWiring),
     useShortcutBindingsStore.subscribe(wakeFromThisWiring),
     useThemeStore.subscribe(wakeFromThisWiring),

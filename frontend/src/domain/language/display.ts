@@ -119,4 +119,3 @@ function getLanguageDisplayLine(line: LyricLine, variant: LanguageTextVariant): 
 }
 
 export { getLanguageDisplayLine };
-export type { LanguageDisplayLine, LanguageTextVariant };

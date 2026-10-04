@@ -54,15 +54,8 @@ function buildSyncedTtml(durationSeconds?: number): string {
 }
 
 /** The three `buildSyncedTtml` lines, credited to `songwriters` the way Composer writes them. */
-function buildSongwriterTtml(songwriters: string[]): string {
-  const { metadata, agents } = useProjectStore.getState();
-  return generateTTML({ metadata: { ...metadata, songwriters }, agents, lines: threeSyncedLines(), groups: [] });
-}
 
 /** One timed line credited through Apple's `<iTunesMetadata><songwriters>` list, as an imported Apple TTML carries it. */
-function buildAppleSongwriterTtml(): string {
-  return `<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata" xml:lang="en"><head><metadata><ttm:agent type="person" xml:id="v1"/><iTunesMetadata xmlns="http://music.apple.com/lyric-ttml-internal"><songwriters><songwriter>Apple Writer</songwriter><songwriter>Second Writer</songwriter></songwriters></iTunesMetadata></metadata></head><body dur="10s"><div><p begin="0s" end="5s" ttm:agent="v1">Apple line</p></div></body></tt>`;
-}
 
 /** One word-synced line 2-6s carrying a background vocal over its second half. */
 function buildBackgroundVocalTtml(): string {
@@ -87,128 +80,11 @@ function buildBackgroundVocalTtml(): string {
 }
 
 /** One synced Korean line with a timed transliteration and an English translation. */
-function buildAlternateLanguageTtml(): string {
-  const lines = [
-    createLine({
-      id: "line-language",
-      text: "안녕 세상",
-      words: [
-        { text: "안녕 ", begin: 2, end: 4 },
-        { text: "세상", begin: 4, end: 6 },
-      ],
-    }),
-  ];
-  lines[0].words?.forEach((word, index) => {
-    word.transliteration = index === 0 ? "annyeong" : "sesang";
-  });
-  lines[0].transliteration = {
-    language: "ko-Latn",
-    text: "annyeong sesang",
-    segments: [{ original: "안녕 세상", transliteration: "annyeong sesang" }],
-    origin: "manual",
-    sourceFingerprint: "preview-fixture",
-  };
-  lines[0].translations = {
-    en: {
-      language: "en",
-      text: "Hello world",
-      origin: "manual",
-      sourceFingerprint: "preview-fixture",
-    },
-  };
-
-  const { metadata, agents } = useProjectStore.getState();
-  return generateTTML({ metadata, agents, lines, groups: [] });
-}
 
 /** One synced Korean line whose alternate-language background vocal falls in a foreground pause. */
-function buildAlternateBackgroundLanguageTtml(): string {
-  const lines = [
-    createLine({
-      id: "line-language-background",
-      text: "안녕 세상",
-      words: [
-        { text: "안녕 ", begin: 2, end: 3 },
-        { text: "세상", begin: 4, end: 6 },
-      ],
-      backgroundText: "오",
-      backgroundWords: [{ text: "오", begin: 3.2, end: 3.8 }],
-    }),
-  ];
-  lines[0].words![0].transliteration = "annyeong";
-  lines[0].words![1].transliteration = "sesang";
-  lines[0].backgroundWords![0].transliteration = "oh";
-  lines[0].transliteration = {
-    language: "ko-Latn",
-    text: "annyeong sesang",
-    backgroundText: "oh",
-    segments: [{ original: "안녕 세상", transliteration: "annyeong sesang" }],
-    backgroundSegments: [{ original: "오", transliteration: "oh" }],
-    origin: "manual",
-    sourceFingerprint: "preview-background-fixture",
-  };
-  lines[0].translations = {
-    en: {
-      language: "en",
-      text: "Hello world",
-      backgroundText: "Oh",
-      origin: "manual",
-      sourceFingerprint: "preview-background-fixture",
-    },
-  };
-
-  const { metadata, agents } = useProjectStore.getState();
-  return generateTTML({ metadata, agents, lines, groups: [] });
-}
 
 /** One synced line whose alternate tracks are identical to the main text. */
-function buildMatchingAlternateLanguageTtml(): string {
-  const lines = [
-    createLine({
-      id: "line-matching-language",
-      text: "same line",
-      words: [
-        { text: "same ", begin: 2, end: 4 },
-        { text: "line", begin: 4, end: 6 },
-      ],
-    }),
-  ];
-  for (const [index, word] of (lines[0].words ?? []).entries()) {
-    word.transliteration = index === 0 ? "Same," : "LINE!";
-  }
-  lines[0].transliteration = {
-    language: "en-Latn",
-    text: "Same, LINE!",
-    segments: [{ original: "same line", transliteration: "Same, LINE!" }],
-    origin: "manual",
-    sourceFingerprint: "matching-preview-fixture",
-  };
-  lines[0].translations = {
-    en: {
-      language: "en",
-      text: "SAME, LINE!",
-      origin: "manual",
-      sourceFingerprint: "matching-preview-fixture",
-    },
-  };
-
-  const { metadata, agents } = useProjectStore.getState();
-  return generateTTML({
-    metadata,
-    agents,
-    lines,
-    groups: [],
-  });
-}
 
 // -- Exports ------------------------------------------------------------------
 
-export {
-  buildAlternateBackgroundLanguageTtml,
-  buildAppleSongwriterTtml,
-  buildAlternateLanguageTtml,
-  buildBackgroundVocalTtml,
-  buildMatchingAlternateLanguageTtml,
-  buildSongwriterTtml,
-  buildSyncedTtml,
-};
+export { buildBackgroundVocalTtml, buildSyncedTtml };

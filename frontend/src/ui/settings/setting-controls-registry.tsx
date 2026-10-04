@@ -1,7 +1,5 @@
 import { useSettingsStore } from "@/stores/settings";
 import type { SettingId } from "@/stores/settings-catalog";
-import { BridgeSection } from "@/ui/settings/bridge-section";
-import { CobaltInstancesSetting } from "@/ui/settings/cobalt-instances-setting";
 import { DefaultPlaybackRateSetting } from "@/ui/settings/default-playback-rate-setting";
 import type { SelectOption, SliderAction } from "@/ui/settings/setting-controls";
 import { SplitCharacterSetting } from "@/ui/settings/split-character-setting";
@@ -41,14 +39,6 @@ const SETTING_CONTROLS: Record<SettingId, SettingControl> = {
   preservePitch: TOGGLE,
   rememberVolume: TOGGLE,
   audioScrubPreview: TOGGLE,
-  autoSeparateOnImport: TOGGLE,
-  vocalModelVariant: {
-    kind: "select",
-    options: [
-      { value: "fp32", label: "fp32 (~171 MB, recommended)" },
-      { value: "fp16", label: "fp16 (~85 MB, experimental)" },
-    ],
-  },
   defaultZoom: {
     kind: "slider",
     min: 20,
@@ -72,7 +62,6 @@ const SETTING_CONTROLS: Record<SettingId, SettingControl> = {
     },
   },
   timelineSnap: TOGGLE,
-  vocalOnsetSnap: TOGGLE,
   timelineSnapThreshold: { kind: "slider", min: 4, max: 24, step: 1, format: (v) => `${v}px` },
   snapPlayheadToPoints: TOGGLE,
   followPlayhead: TOGGLE,
@@ -84,7 +73,6 @@ const SETTING_CONTROLS: Record<SettingId, SettingControl> = {
   nudgeAmount: { kind: "slider", min: 0.01, max: 0.2, step: 0.01, format: asMilliseconds },
   defaultWordDuration: { kind: "slider", min: 0.1, max: 1, step: 0.05, format: asMilliseconds },
   minWordDuration: { kind: "slider", min: 0.01, max: 0.2, step: 0.01, format: asMilliseconds },
-  redoPreroll: { kind: "slider", min: 0, max: 5, step: 0.1, format: asMilliseconds },
   defaultGranularity: {
     kind: "select",
     options: [
@@ -92,27 +80,12 @@ const SETTING_CONTROLS: Record<SettingId, SettingControl> = {
       { value: "line", label: "Line" },
     ],
   },
-  confirmReplaceProjectFromHash: TOGGLE,
-  confirmReplaceLyrics: TOGGLE,
-  confirmSyncReset: TOGGLE,
-  confirmClearProject: TOGGLE,
   confirmResetSettings: TOGGLE,
   confirmResetShortcuts: TOGGLE,
   confirmApplyToAllSyllableSplit: TOGGLE,
   confirmConformToGroup: TOGGLE,
   confirmGroupDissolution: TOGGLE,
-  confirmClearImportedSongDetails: TOGGLE,
   autoSaveDelay: { kind: "slider", min: 500, max: 10000, step: 500, format: (v) => `${(v / 1000).toFixed(1)}s` },
-  previewRenderer: {
-    kind: "select",
-    options: [
-      { value: "spicy", label: "Spicy Lyrics (default)" },
-      { value: "braccato", label: "Braccato" },
-      { value: "am-lyrics", label: "am-lyrics" },
-    ],
-  },
-  youtubeBridge: { kind: "custom", Component: BridgeSection },
-  cobaltInstances: { kind: "custom", Component: CobaltInstancesSetting },
 };
 
 // -- Exports -------------------------------------------------------------------

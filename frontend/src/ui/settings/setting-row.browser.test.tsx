@@ -34,9 +34,9 @@ describe("SettingRow", () => {
   });
 
   it("renders a custom block inside the row", async () => {
-    const screen = await render(<SettingRow id="cobaltInstances" />);
-    await expect.element(screen.getByText("Cobalt instances")).toBeInTheDocument();
-    expect(rowOf(screen.container)?.dataset.settingId).toBe("cobaltInstances");
+    const screen = await render(<SettingRow id="splitCharacter" />);
+    await expect.element(screen.getByText("Split character")).toBeInTheDocument();
+    expect(rowOf(screen.container)?.dataset.settingId).toBe("splitCharacter");
   });
 
   describe("invariants", () => {

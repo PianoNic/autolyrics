@@ -112,4 +112,3 @@ const Select: React.FC<SelectProps> = ({
 // -- Exports ------------------------------------------------------------------
 
 export { Select };
-export type { SelectOption };

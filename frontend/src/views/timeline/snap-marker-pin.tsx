@@ -13,9 +13,9 @@ import {
 } from "@floating-ui/react";
 import { IconTrash } from "@tabler/icons-react";
 import { m, useIsPresent, useReducedMotion } from "motion/react";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { cn } from "@/utils/cn";
-import { pinDropInVariants, snapFlashVariants } from "@/utils/animationVariants";
+import { pinDropInVariants } from "@/utils/animationVariants";
 import { formatTime } from "@/utils/format-time";
 
 // -- Types ---------------------------------------------------------------------
@@ -26,7 +26,6 @@ interface SnapMarkerPinProps {
   zoom: number;
   fadeExtent: number;
   isDragging: boolean;
-  isOnOnset: boolean;
   onHeadPointerDown: (id: string, event: React.PointerEvent<HTMLElement>) => void;
   onDelete: (id: string) => void;
   onHoverChange?: (id: string, hovering: boolean) => void;
@@ -40,7 +39,6 @@ const SnapMarkerPin = memo(function SnapMarkerPin({
   zoom,
   fadeExtent,
   isDragging,
-  isOnOnset,
   onHeadPointerDown,
   onDelete,
   onHoverChange,
@@ -84,11 +82,6 @@ const SnapMarkerPin = memo(function SnapMarkerPin({
   // overlay's hovered id pointing at a gone pin. Clear it through the same callback.
   useEffect(() => () => onHoverChange?.(id, false), [id, onHoverChange]);
 
-  const wasOnOnsetRef = useRef(false);
-  const [flashKey, setFlashKey] = useState(0);
-  if (isOnOnset && !wasOnOnsetRef.current) setFlashKey((key) => key + 1);
-  wasOnOnsetRef.current = isOnOnset;
-
   // Drop the tooltip the instant the pin starts exiting. Without this it keeps
   // tracking the head as the exit transform shrinks and lifts it, so the
   // floating tooltip drifts up and to the side before the pin unmounts.
@@ -111,18 +104,6 @@ const SnapMarkerPin = memo(function SnapMarkerPin({
         className="snap-custom-line absolute top-0 left-1/2 -translate-x-1/2 pointer-events-none"
         style={{ height: fadeExtent }}
       />
-      {flashKey > 0 && (
-        <m.div
-          key={flashKey}
-          data-snap-marker-flash
-          data-flash-key={flashKey}
-          className="snap-marker-flash absolute top-0 left-1/2 -translate-x-1/2 pointer-events-none"
-          style={{ height: fadeExtent }}
-          variants={snapFlashVariants}
-          initial="initial"
-          animate={reduceMotion ? "initial" : "animate"}
-        />
-      )}
       <button
         ref={refs.setReference}
         type="button"

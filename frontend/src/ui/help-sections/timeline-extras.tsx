@@ -108,10 +108,6 @@ const TimelineExtras: React.FC = () => (
           the Timeline section for the full rundown.
         </li>
         <li>
-          <strong>Import</strong> (<InlineKeyBadge keys={getEffectiveKeysArray("timeline.importLyrics")} />
-          ): imports lyrics directly into the Timeline without switching tabs.
-        </li>
-        <li>
           <strong>Zoom</strong>: use the +/- buttons or {MOD_KEY} + scroll wheel to zoom in and out. The header buttons
           keep the playhead pinned in place; scroll-wheel zoom pivots under the cursor.
         </li>

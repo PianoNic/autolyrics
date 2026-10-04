@@ -1,29 +1,7 @@
 import { effectiveBounds } from "@/domain/line/bounds";
-import { isLineSynced } from "@/domain/line/predicates";
 import type { LyricLine } from "@/domain/line/model";
-import type { SyncCursor } from "@/domain/sync/cursor";
 import type { WordTiming } from "@/domain/word/timing";
-import { useSettingsStore } from "@/stores/settings";
-import { formatTime } from "@/utils/format-time";
 import { getSplitCharacter } from "@/utils/split-character";
-
-// -- Types --------------------------------------------------------------------
-
-interface SyncState {
-  position: SyncCursor;
-  isActive: boolean;
-  // True when the cursor was placed by a jump rather than by advancing through
-  // the song. Tapping the first word of a line closes the previous line so the
-  // two meet, which is right in a forward pass but stretches an already-correct
-  // line when the user jumped back to re-record this one.
-  jumpedToPosition?: boolean;
-}
-
-// -- Constants ----------------------------------------------------------------
-
-function getNudgeAmount(): number {
-  return useSettingsStore.getState().nudgeAmount;
-}
 
 // -- Functions ----------------------------------------------------------------
 
@@ -48,20 +26,6 @@ function splitIntoWordsWithMeta(text: string): { parts: string[]; trailingSpace:
     }
   }
   return { parts, trailingSpace };
-}
-
-const formatTimeMs = (seconds: number) => formatTime(seconds, 3);
-
-function parseTimeMs(str: string): number | null {
-  const trimmed = str.trim();
-  // Format: M:SS.mmm or MM:SS.mmm
-  const match = trimmed.match(/^(\d+):(\d{1,2})(?:\.(\d{1,3}))?$/);
-  if (!match) return null;
-  const mins = Number.parseInt(match[1], 10);
-  const secs = Number.parseInt(match[2], 10);
-  const ms = match[3] ? Number.parseInt(match[3].padEnd(3, "0"), 10) : 0;
-  if (secs >= 60) return null;
-  return mins * 60 + secs + ms / 1000;
 }
 
 // -- Conversion Functions -----------------------------------------------------
@@ -92,10 +56,6 @@ function convertLineToWord<T extends ConvertibleLine>(line: T): T {
   }));
 
   return { ...line, words, begin: undefined, end: undefined };
-}
-
-function hasLineTiming(lines: LyricLine[]): boolean {
-  return lines.some(isLineSynced);
 }
 
 // -- Word Distribution --------------------------------------------------------
@@ -145,12 +105,6 @@ function createBgWordsFromLine(line: LyricLine): WordTiming[] | null {
   return createInitialBgWords(line.backgroundText, (timing.begin + timing.end) / 2, timing.end);
 }
 
-function withSeededBackgroundWords(line: LyricLine): LyricLine {
-  if (!line.backgroundText || line.backgroundWords?.length) return line;
-  const backgroundWords = createBgWordsFromLine(line);
-  return backgroundWords ? { ...line, backgroundWords } : line;
-}
-
 // -- Exports ------------------------------------------------------------------
 
 export {
@@ -158,13 +112,7 @@ export {
   createBgWordsFromTextAt,
   createInitialBgWords,
   distributeWordsInLine,
-  getNudgeAmount,
   convertLineToWord,
-  formatTimeMs,
-  hasLineTiming,
-  parseTimeMs,
   splitIntoWords,
   splitIntoWordsWithMeta,
-  withSeededBackgroundWords,
 };
-export type { SyncState };

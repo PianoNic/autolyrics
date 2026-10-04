@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   __resetPersistenceSettledForTests,
-  getHashImportSettled,
   getPersistenceSettled,
-  markHashImportSettled,
   markPersistenceSettled,
 } from "@/lib/persistence-settled";
 
@@ -132,70 +130,5 @@ describe("__resetPersistenceSettledForTests", () => {
     await expect(freshAfter).resolves.toBeUndefined();
     const racedCaptured = await withinTimeout(captured, SETTLE_TIMEOUT_MS);
     expect(racedCaptured).toBe("timeout");
-  });
-});
-
-// -- hashImportSettled mirrors persistenceSettled -----------------------------
-
-describe("hashImportSettled", () => {
-  it("starts pending until markHashImportSettled is called", async () => {
-    const settled = getHashImportSettled();
-    const raced = await withinTimeout(settled, SETTLE_TIMEOUT_MS);
-    expect(raced).toBe("timeout");
-  });
-
-  it("resolves after markHashImportSettled", async () => {
-    const settled = getHashImportSettled();
-    markHashImportSettled();
-    await expect(settled).resolves.toBeUndefined();
-  });
-
-  it("is a distinct promise from persistenceSettled (independent signals)", () => {
-    expect(getHashImportSettled()).not.toBe(getPersistenceSettled());
-  });
-
-  it("marking persistence does not resolve hash, and vice versa", async () => {
-    const hash = getHashImportSettled();
-    markPersistenceSettled();
-    const raced = await withinTimeout(hash, SETTLE_TIMEOUT_MS);
-    expect(raced).toBe("timeout");
-  });
-
-  it("calling markHashImportSettled twice is idempotent", async () => {
-    const settled = getHashImportSettled();
-    markHashImportSettled();
-    markHashImportSettled();
-    await expect(settled).resolves.toBeUndefined();
-  });
-});
-
-// -- reset clears both signals together ---------------------------------------
-
-describe("__resetPersistenceSettledForTests covers both signals", () => {
-  it("resets persistence AND hash to fresh pending promises", async () => {
-    markPersistenceSettled();
-    markHashImportSettled();
-    await getPersistenceSettled();
-    await getHashImportSettled();
-
-    __resetPersistenceSettledForTests();
-
-    const racedP = await withinTimeout(getPersistenceSettled(), SETTLE_TIMEOUT_MS);
-    const racedH = await withinTimeout(getHashImportSettled(), SETTLE_TIMEOUT_MS);
-    expect(racedP).toBe("timeout");
-    expect(racedH).toBe("timeout");
-  });
-
-  it("marking persistence after reset does not resolve hash", async () => {
-    markPersistenceSettled();
-    markHashImportSettled();
-    await Promise.all([getPersistenceSettled(), getHashImportSettled()]);
-
-    __resetPersistenceSettledForTests();
-    markPersistenceSettled();
-
-    await expect(getPersistenceSettled()).resolves.toBeUndefined();
-    const racedH = await withinTimeout(getHashImportSettled(), SETTLE_TIMEOUT_MS);
-    expect(racedH).toBe("timeout");
   });
 });
