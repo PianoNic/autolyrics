@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     llm_api_key: str | None = Field(
         None, validation_alias=AliasChoices("AGENT_API_KEY", "AUTOLYRICS_LLM_API_KEY"))
     llm_model: str = Field(
-        "sgl/deepseek", validation_alias=AliasChoices("AGENT_MODEL", "AUTOLYRICS_LLM_MODEL"))
+        "deepseek-chat", validation_alias=AliasChoices("AGENT_MODEL", "AUTOLYRICS_LLM_MODEL"))
 
     # lyrics-api.boidu.dev (Better Lyrics TTML, QQ QRC) answers cached songs without a key and
     # needs one for everything else.
