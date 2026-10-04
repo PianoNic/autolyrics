@@ -13,6 +13,7 @@ their place).
 """
 
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -25,7 +26,8 @@ from autolyrics.infrastructure.runtime.background_priority import BackgroundPrio
 
 
 class SongBenchmark:
-    WORKSPACE = "v2"  # where the stems of the configured separator are cached
+    # Where the stems of the configured separator are cached (v1 for the previous engine).
+    WORKSPACE = os.environ.get("BENCH_WORKSPACE", "v2")
     def __init__(self, container: Container, folder: Path):
         self._container = container
         self._folder = folder
