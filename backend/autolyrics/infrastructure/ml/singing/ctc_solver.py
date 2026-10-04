@@ -52,7 +52,9 @@ class GlobalCtcSolver:
     GAP_LOGP = -1.5  # per frame for a line gap that soaks up sound the lyrics do not cover
 
     def __init__(self, prior_weight: float = 3.0, prior_tolerance: float = 0.35,
-                 window_weight: float = 2.0, window_tolerance: float = 1.0):
+                 window_weight: float = 2.0, window_tolerance: float = 1.0,
+                 filler: float | None = None):
+        self._filler = filler  # nats per frame a filler pays below the best-matching token
         self._weight = prior_weight  # nats per second beyond the tolerance, on a line's start
         self._tolerance = prior_tolerance
         # Every token of a line pays this per second it sits outside the line's source span:
@@ -69,7 +71,20 @@ class GlobalCtcSolver:
         if line_gap is not None:
             logp = logp.copy()
             logp[:, line_gap] = self.GAP_LOGP
+        elif self._filler is not None:
+            # A model without a garbage token gets one: an optional filler between lines that
+            # matches whatever is sung, at a cost. Ad-libs and background words that are not
+            # in the line then land in it instead of stretching the line's last word.
+            sung = np.delete(logp, em.blank, axis=1).max(axis=1, keepdims=True)
+            logp = np.concatenate((logp, sung - self._filler), axis=1)
+            line_gap = logp.shape[1] - 1
+            labels = self._labels(lines, word_gap, line_gap)
         path = self._viterbi(logp, em, labels, lines, prior_offset)
+        # How well the audio supports this placement, without the priors' pull: lets a caller
+        # compare placements made under different priors.
+        tokens = np.full(2 * len(labels) + 1, em.blank, dtype=np.int64)
+        tokens[1::2] = [lab.token for lab in labels]
+        self.last_acoustic_score = float(logp[np.arange(len(path)), tokens[path]].sum())
         return self._spans(path, logp, em, labels)
 
     # -- building the label sequence -----------------------------------------

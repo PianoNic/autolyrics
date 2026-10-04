@@ -67,6 +67,7 @@ class SingingLyricsAligner(ILyricsAligner):
     """
 
     TOKEN_SECONDS = 0.08  # typical length of one sung phoneme or letter
+    DRIFT = 0.25  # seconds a source must drift over the song before its drift is followed
     MAX_HOLD = 4.0  # seconds a word may be held past where the aligner ended it
     BACKGROUND_BEFORE, BACKGROUND_AFTER = 1.5, 2.5
 
@@ -113,7 +114,8 @@ class SingingLyricsAligner(ILyricsAligner):
             offset, placed, solver_lines = self._place(lines, model, em, language, line_synced)
             progress.update(0.5, "judging every word")
             events = self._analyzer.analyze(stems.lead)
-            self._judge(lines, model, solver_lines, placed, heard, offset, events)
+            # The priors already carry each line's own offset.
+            self._judge(lines, model, solver_lines, placed, heard, 0.0, events)
             borrowed = self._repeats.apply(lines) if self._repeats is not None else set()
             for key in borrowed:
                 placed.pop(key, None)  # its heard syllables no longer match its new times
@@ -175,19 +177,62 @@ class SingingLyricsAligner(ILyricsAligner):
         spans = self._solver.solve(em, solver_lines, model.word_gap, model.line_gap)
         offset = 0.0
         if line_synced:
-            # The source's times may belong to another master of the song: measure the constant
-            # offset, then pull with it.
-            starts = {}
+            # The source's times may belong to another master or a live take of the song: they
+            # can sit off by a constant and also drift (a live show paced differently). Each
+            # line's offset is measured against its neighbours and the source is followed with
+            # it, so the pull points where this recording actually has the line.
+            starts: dict[int, float] = {}
             for s in spans:
                 starts.setdefault(s.line, s.begin)
-            diffs = [starts[i] - line.begin for i, line in enumerate(lines) if i in starts]
-            offset = float(median(diffs)) if diffs else 0.0
-            if abs(offset) > 0.05:
-                spans = self._solver.solve(em, solver_lines, model.word_gap, model.line_gap,
-                                           prior_offset=offset)
+            source = [line.begin for line in lines]
+            known = [starts[i] - s for i, s in enumerate(source) if i in starts]
+            offset = float(median(known)) if known else 0.0
+            # First the constant offset; only with it applied can a drift be told from the
+            # misplacements a wrong offset causes.
+            best = self._solve_shifted(em, model, solver_lines, [offset] * len(lines))
+            starts = {}
+            for s in best[1]:
+                starts.setdefault(s.line, s.begin)
+            drift = self._local_offsets([starts.get(i) for i in range(len(lines))], source)
+            if max(drift) - min(drift) > self.DRIFT:
+                # The audio decides whether the drift is real.
+                drifting = self._solve_shifted(em, model, solver_lines, drift)
+                if drifting[0] > best[0]:
+                    best = drifting
+            _, spans, solver_lines = best
         self._apply(spans, lines)
         placed = {(s.line, s.word): (s, solver_lines[s.line].words[s.word]) for s in spans}
         return offset, placed, solver_lines
+
+    def _solve_shifted(self, em: Emissions, model: IAcousticModel, lines: list[SolverLine],
+                       shifts: list[float]) -> tuple[float, list[WordSpan], list[SolverLine]]:
+        shifted = [SolverLine(line.words, line.prior_start + shift, line.prior_end + shift)
+                   for line, shift in zip(lines, shifts, strict=True)]
+        spans = self._solver.solve(em, shifted, model.word_gap, model.line_gap)
+        return self._solver.last_acoustic_score, spans, shifted
+
+    def _local_offsets(self, found: list[float | None], source: list[float]) -> list[float]:
+        """Per line, the offset between the source and this recording. A different master or a
+        live take paced differently shows as a smooth drift over the whole song, fitted as a
+        straight line with Theil-Sen (the median of all pairwise slopes), which ignores lines
+        the first pass misplaced; a misplaced region must not drag its neighbours along. Without
+        a clear drift every line gets the song's median offset."""
+        points = [(s, f - s) for f, s in zip(found, source, strict=True) if f is not None]
+        if not points:
+            return [0.0] * len(source)
+        times = np.array([t for t, _ in points])
+        diffs = np.array([d for _, d in points])
+        song = float(np.median(diffs))
+        if len(points) < 6:
+            return [song] * len(source)
+        dt = times[None, :] - times[:, None]
+        dd = diffs[None, :] - diffs[:, None]
+        mask = dt > 1.0
+        slope = float(np.median(dd[mask] / dt[mask])) if mask.any() else 0.0
+        intercept = float(np.median(diffs - slope * times))
+        if abs(slope) * (times.max() - times.min()) <= self.DRIFT:
+            return [song] * len(source)
+        return [intercept + slope * t for t in source]
 
     # -- judging --------------------------------------------------------------
 
@@ -279,6 +324,9 @@ class SingingLyricsAligner(ILyricsAligner):
 
     def _align_background(self, lines: list[Line], model: IAcousticModel, language: str,
                           em: Emissions) -> None:
+        # Background lines are sung in order too: each one searches only after the previous
+        # one, so repeated ad-libs ("ciao, ciao") are not all placed on the same sounds.
+        taken = 0.0
         for line in lines:
             if not line.background:
                 continue
@@ -287,8 +335,10 @@ class SingingLyricsAligner(ILyricsAligner):
                 continue
             tokens = model.tokens([w.text for w in line.background], language)
             spans = self._solve_window(em, tokens, model,
-                                       timed[0].begin - self.BACKGROUND_BEFORE,
+                                       max(taken, timed[0].begin - self.BACKGROUND_BEFORE),
                                        timed[-1].end + self.BACKGROUND_AFTER)
+            if spans:
+                taken = max(s.end for s in spans)
             for s in spans:
                 word = line.background[s.word]
                 word.begin, word.end, word.confidence = round(s.begin, 3), round(s.end, 3), s.score
