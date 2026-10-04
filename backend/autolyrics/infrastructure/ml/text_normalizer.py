@@ -22,7 +22,8 @@ class AlignmentTextNormalizer:
         from unidecode import unidecode
 
         text = word.lower()
-        if self._japanese is not None and self._japanese.contains_japanese(text):
+        if (self._japanese is not None and not language.startswith(("zh", "ko"))
+                and self._japanese.contains_japanese(text)):
             # Kanji have Japanese readings; a generic romaniser would read them as Chinese.
             text = self._japanese.romaji(text)
         symbols = self.SYMBOLS["de" if language.startswith("de") else "en"]

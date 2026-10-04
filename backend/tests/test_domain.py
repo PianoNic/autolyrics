@@ -351,3 +351,20 @@ class TestLineAnchorerWithWordTimes:
         ours = Lyrics(lines=[Line(words=Word.tokenize("Tell me how you feel now"))])
         assert LineAnchorer().anchor(ours, heard, 60.0) == 1
         assert ours.lines[0].begin == 12.0
+
+
+class TestScripts:
+    def _lyrics(self, *lines):
+        from autolyrics.domain.lyrics import Line, Lyrics, Word
+
+        return Lyrics(lines=[Line(words=Word.tokenize(text)) for text in lines])
+
+    def test_the_writing_system_names_the_language(self):
+        from autolyrics.domain.services.language_guesser import LanguageGuesser
+
+        guess = LanguageGuesser().guess
+        assert guess(self._lyrics("사랑해 너를")) == "ko"
+        assert guess(self._lyrics("無敵の笑顔で荒らすメディア")) == "ja"
+        assert guess(self._lyrics("我爱你 中国")) == "zh"
+        assert guess(self._lyrics("Привет, как дела")) == "ru"
+        assert guess(self._lyrics("Ich bin raus und du nicht")) == "de"

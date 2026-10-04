@@ -40,11 +40,43 @@ class WordSegmenter:
 
     def segment(self, lyrics: Lyrics, language: str) -> int:
         """Split in place; returns how many words were split."""
+        if language.startswith("zh"):
+            return sum(self._characters(line) for line in lyrics.lines)
         if not language.startswith("ja"):
             return 0
         split = 0
         for line in lyrics.lines:
             split += self._segment_line(line)
+        return split
+
+    @staticmethod
+    def _characters(line: Line) -> int:
+        """Chinese: every character is a sung syllable; Latin runs stay whole."""
+        split = 0
+        for attr in ("words", "background"):
+            out: list[Word] = []
+            for word in getattr(line, attr):
+                core = word.text.rstrip()
+                pieces, run = [], ""
+                for ch in core:
+                    if 0x4E00 <= ord(ch) <= 0x9FFF:
+                        if run:
+                            pieces.append(run)
+                            run = ""
+                        pieces.append(ch)
+                    elif pieces and not ch.isalnum() and not run:
+                        pieces[-1] += ch  # punctuation joins the character before it
+                    else:
+                        run += ch
+                if run:
+                    pieces.append(run)
+                if len(pieces) <= 1:
+                    out.append(word)
+                    continue
+                split += 1
+                pieces[-1] += word.text[len(core):]
+                out += [Word(text=p, flags=list(word.flags)) for p in pieces]
+            setattr(line, attr, out)
         return split
 
     def _segment_line(self, line: Line) -> int:

@@ -21,3 +21,4 @@ Thumbs.db
 
 # Benchmark songs (audio and third-party lyrics)
 benchmarks/
+training/

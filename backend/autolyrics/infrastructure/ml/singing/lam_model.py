@@ -133,6 +133,9 @@ class SingingPhonemeModel(IAcousticModel):
         self._torch = torch
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self._phonemizer = phonemizer
+        # Cached emissions are named after the model: a fine-tuned checkpoint gets its own.
+        stat = checkpoint.stat()
+        self.name = f"singing-phonemes-{stat.st_size:x}{int(stat.st_mtime):x}"[:40]
         self._network = build_network()
         state = torch.load(checkpoint, map_location="cpu", weights_only=False)
         self._network.load_state_dict(state["model_state_dict"])

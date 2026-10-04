@@ -317,3 +317,13 @@ class TestWhisperWords:
         first = lyrics.lines[0]
         assert (first.begin, first.end) == (10.0, 10.9)
         assert [w.begin for w in first.words] == [10.0, 10.3, 10.5]
+
+
+class TestChineseCharacters:
+    def test_every_character_becomes_a_syllable(self):
+        from autolyrics.domain.lyrics import Line, Lyrics, Word
+        from autolyrics.infrastructure.ml.japanese_text import JapaneseText, WordSegmenter
+
+        lyrics = Lyrics(lines=[Line(words=Word.tokenize("我爱你, baby 中国"))])
+        WordSegmenter(JapaneseText()).segment(lyrics, "zh")
+        assert [w.text for w in lyrics.lines[0].words] == ["我", "爱", "你, ", "baby ", "中", "国"]

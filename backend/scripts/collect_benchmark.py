@@ -1,6 +1,10 @@
 """Build the alignment benchmark: songs whose word/syllable timing is already known.
 
     python scripts/collect_benchmark.py [benchmarks_dir]
+    python scripts/collect_benchmark.py training --charts=us,de,gb,fr,jp,kr,es,it,br,mx
+
+With --charts the songs come from Apple Music's public most-played charts of those countries
+instead of SONGS (training data for the acoustic model); songs of the benchmark are skipped.
 
 For each song in SONGS it finds a syllable- or word-synced TTML (binimum; these are hand-made
 Apple-style files), then a YouTube upload whose length matches that file within MAX_DRIFT
@@ -132,9 +136,12 @@ class BenchmarkCollector:
                                           encoding="utf-8", newline="\n")
         return f"ok: {lyrics.sync_type.value}, {len(lyrics.all_words)} words, video {video_id}"
 
-    async def run(self) -> None:
+    async def run(self, songs: list[tuple[str, str]] | None = None,
+                  skip: set[str] | None = None) -> None:
         self._root.mkdir(parents=True, exist_ok=True)
-        for artist, title in SONGS:
+        for artist, title in songs or SONGS:
+            if skip and self.slug(artist, title) in skip:
+                continue
             try:
                 outcome = await self.collect(artist, title)
             except Exception as error:  # noqa: BLE001 - one song must not stop the collection
@@ -142,10 +149,45 @@ class BenchmarkCollector:
             print(f"{artist} – {title}: {outcome}", flush=True)
 
 
+class AppleCharts:
+    """Apple Music's public most-played songs per country (no account needed)."""
+
+    URL = "https://rss.marketingtools.apple.com/api/v2/{country}/music/most-played/100/songs.json"
+
+    def __init__(self, client: httpx.AsyncClient):
+        self._client = client
+
+    async def songs(self, countries: list[str]) -> list[tuple[str, str]]:
+        seen: dict[str, tuple[str, str]] = {}
+        for country in countries:
+            try:
+                response = await self._client.get(self.URL.format(country=country), timeout=20)
+                results = response.json()["feed"]["results"]
+            except (httpx.HTTPError, ValueError, KeyError) as error:
+                print(f"chart {country}: {error}")
+                continue
+            for r in results:
+                # The main artist only: "A & B" credits rarely match the lyrics sources.
+                artist = re.split(r" & |, | feat\. ", r["artistName"])[0]
+                title = re.sub(r" \((feat|with)\..*?\)", "", r["name"])
+                seen.setdefault(BenchmarkCollector.slug(artist, title), (artist, title))
+        return list(seen.values())
+
+
 async def main() -> None:
-    root = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("benchmarks")
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    root = Path(args[0]) if args else Path("benchmarks")
+    charts = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--charts=")), None)
     async with httpx.AsyncClient(follow_redirects=True) as client:
-        await BenchmarkCollector(root, client).run()
+        collector = BenchmarkCollector(root, client)
+        if charts is None:
+            await collector.run()
+            return
+        songs = await AppleCharts(client).songs(charts.split(","))
+        benchmark = Path(__file__).resolve().parents[2] / "benchmarks"
+        skip = {p.name for p in benchmark.iterdir()} if benchmark.exists() else set()
+        print(f"{len(songs)} chart songs, {len(skip)} benchmark songs left out", flush=True)
+        await collector.run(songs, skip)
 
 
 if __name__ == "__main__":

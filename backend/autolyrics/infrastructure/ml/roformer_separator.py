@@ -43,6 +43,21 @@ class RoformerVocalSeparator(IVocalSeparator):
             self._separate(audio, workspace, progress)
         return VocalStems(lead=lead, vocals=vocals, backing=backing)
 
+    def vocals_only(self, audio: Path, workspace: Path) -> Path:
+        """Just the first pass (all vocals), for building training data."""
+        vocals = workspace / self.VOCALS
+        if vocals.exists():
+            return vocals
+        scratch = workspace / "separation"
+        scratch.mkdir(exist_ok=True)
+        try:
+            mix = self._ffmpeg.to_wav(audio, scratch / "mix.wav", sample_rate=44100)
+            shutil.move(self._run(self._steps[0], mix, scratch, keep="vocals"), vocals)
+        finally:
+            shutil.rmtree(scratch, ignore_errors=True)
+            self._free_gpu()
+        return vocals
+
     def _separate(self, audio: Path, workspace: Path, progress: IProgress) -> None:
         scratch = workspace / "separation"
         scratch.mkdir(exist_ok=True)
