@@ -22,7 +22,7 @@ const ImportSection: React.FC = () => (
 
     <HelpTopic title="YouTube URLs">
       <p className={PROSE}>
-        Paste any YouTube link (full URL, share link, or just the video ID) into the Import tab. Composer downloads the
+        Paste any YouTube link (full URL, share link, or just the video ID) into the Import tab. autolyrics downloads the
         audio once and keeps it in memory, so seeking and waveform rendering stay instant after that.
       </p>
       <ul className={`${PROSE} list-disc pl-4 mt-1.5 space-y-1`}>
@@ -36,23 +36,23 @@ const ImportSection: React.FC = () => (
       </ul>
     </HelpTopic>
 
-    <HelpTopic title="YouTube backends: Cobalt and Composer Bridge">
+    <HelpTopic title="YouTube backends: Cobalt and autolyrics Bridge">
       <p className={PROSE}>
-        YouTube audio doesn't come from YouTube directly. Composer routes the request through a small backend service
+        YouTube audio doesn't come from YouTube directly. autolyrics routes the request through a small backend service
         that fetches the audio and hands it back. There are two options.
       </p>
       <p className={`${PROSE} mt-2`}>
-        <strong>Cobalt</strong> is the default. Composer ships with a public instance that handles verification
+        <strong>Cobalt</strong> is the default. autolyrics ships with a public instance that handles verification
         automatically, but YouTube is currently blocking it. To get unblocked, add a working instance from
         cobalt.directory in <SettingLink setting="cobaltInstances" />, or self-host. Each custom instance shows a small
         status icon next to its name reflecting the last attempt, with the actual error in the tooltip if anything went
         wrong.
       </p>
       <p className={`${PROSE} mt-3`}>
-        <strong>Composer Bridge</strong>
+        <strong>autolyrics Bridge</strong>
         <span className="ml-2 text-[10px] tracking-wide text-composer-accent-text">Experimental</span>
         <br />A tiny binary you run on your own machine that downloads YouTube audio over your residential IP, so
-        YouTube doesn't block it the way it blocks shared Cobalt hosts. Composer talks to it over localhost; nothing
+        YouTube doesn't block it the way it blocks shared Cobalt hosts. autolyrics talks to it over localhost; nothing
         leaves your machine. Turn on <SettingLink setting="youtubeBridge" /> and every YouTube import routes through the
         bridge instead of Cobalt.
       </p>
@@ -62,7 +62,7 @@ const ImportSection: React.FC = () => (
           Linux, plus a link to the Windows download.
         </li>
         <li>
-          Once installed, launch <span className={INLINE_CODE}>Composer Bridge</span> from your Applications folder or
+          Once installed, launch <span className={INLINE_CODE}>autolyrics Bridge</span> from your Applications folder or
           run the binary from a terminal. It lives in your menu bar (Mac) or system tray (Windows, Linux). Leave it
           running.
         </li>
@@ -113,7 +113,7 @@ const ImportSection: React.FC = () => (
         sync them manually.
       </p>
       <p className={`${PROSE} mt-3`}>
-        If Composer was opened with{" "}
+        If autolyrics was opened with{" "}
         <span className={INLINE_CODE}>?title=…&amp;artist=…&amp;duration=…&amp;videoId=…</span> query params (for
         example from the Better Lyrics extension), the values stick around and pre-fill the next time you open the
         modal. Clear them with "Reset fields" in the Search section.

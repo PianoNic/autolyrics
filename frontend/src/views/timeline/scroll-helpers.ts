@@ -1,8 +1,12 @@
 import { instanceBounds } from "@/domain/instance/bounds";
 import { linesOfInstance } from "@/domain/instance/enumerate";
+import { isLinked } from "@/domain/instance/predicates";
+import { effectiveBounds } from "@/domain/line/bounds";
+import type { LyricLine } from "@/domain/line/model";
 import { useProjectStore } from "@/stores/project";
 import { GROUP_HEADER_HEIGHT } from "@/views/timeline/group-header-row";
 import { GUTTER_WIDTH, useTimelineStore, WAVEFORM_HEIGHT } from "@/views/timeline/timeline-store";
+import { centerTimeScrollLeft } from "@/views/timeline/coords";
 import { computeRowLayout } from "@/views/timeline/utils";
 
 // -- Functions -----------------------------------------------------------------
@@ -40,4 +44,42 @@ function scrollToInstanceHeader(groupId: string, instanceIdx: number): void {
 
 // -- Exports -------------------------------------------------------------------
 
-export { scrollToInstanceHeader };
+// Centers the timeline on `time` and scrolls the line playing at that time into view (or its
+// group header when that instance is collapsed).
+function revealTimeInTimeline(container: HTMLElement, lines: readonly LyricLine[], time: number): void {
+  const { zoom, rowHeights, defaultRowHeight, collapsedInstances } = useTimelineStore.getState();
+  container.scrollLeft = centerTimeScrollLeft(time, zoom, container.clientWidth);
+
+  const line = lines.find((candidate) => {
+    const timing = effectiveBounds(candidate);
+    return timing !== null && time >= timing.begin && time < timing.end;
+  });
+  if (!line) return;
+
+  const layout = computeRowLayout({
+    lines: [...lines],
+    rowHeights,
+    defaultRowHeight,
+    collapsedInstances,
+    waveformHeight: WAVEFORM_HEIGHT,
+    groupHeaderHeight: GROUP_HEADER_HEIGHT,
+  });
+  const instanceKey = isLinked(line) ? `${line.groupId}:${line.instanceIdx}` : null;
+  const pos =
+    instanceKey && collapsedInstances[instanceKey] ? layout.headerTops.get(instanceKey) : layout.lineTops.get(line.id);
+  if (!pos) return;
+
+  const viewportHeight = container.clientHeight;
+  const rowCenter = pos.top + pos.height / 2;
+  const targetTop = Math.max(0, Math.min(container.scrollHeight - viewportHeight, rowCenter - viewportHeight / 2));
+  container.scrollTo({ top: targetTop, behavior: "instant" });
+}
+
+// The same, for callers outside the timeline (it finds the mounted timeline itself).
+function revealTimeInMountedTimeline(time: number): void {
+  const container = document.querySelector<HTMLDivElement>("[data-scroll-container]");
+  if (!container) return;
+  revealTimeInTimeline(container, useProjectStore.getState().lines, time);
+}
+
+export { revealTimeInMountedTimeline, revealTimeInTimeline, scrollToInstanceHeader };

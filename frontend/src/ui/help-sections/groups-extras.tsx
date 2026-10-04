@@ -14,7 +14,7 @@ const GroupsExtras: React.FC = () => (
         <li>Agent assignments.</li>
         <li>Background vocal text.</li>
         <li>
-          Word splits and merges. Siblings get the new word structure, and Composer keeps the timing of every word that
+          Word splits and merges. Siblings get the new word structure, and autolyrics keeps the timing of every word that
           didn't actually change. Only the split or merged word's slot is divided up. Sibling rhythms you carefully
           synced earlier survive.
         </li>
@@ -31,7 +31,7 @@ const GroupsExtras: React.FC = () => (
     <HelpTopic title="The split-or-merge prompt">
       <p className={PROSE}>
         When a split or merge on a linked line would actually shift sibling word timings (sibling rhythms differ from
-        the source), Composer pops a three-button modal: <strong>Apply to all</strong> (propagate with timing
+        the source), autolyrics pops a three-button modal: <strong>Apply to all</strong> (propagate with timing
         preservation), <strong>Detach</strong> (keep the change on this line only, unlink it from the group), or{" "}
         <strong>Cancel</strong>. The modal stays out of the way when sibling rhythms already match the source, since
         propagation is a no-op for the unchanged words anyway.
@@ -64,7 +64,7 @@ const GroupsExtras: React.FC = () => (
 
     <HelpTopic title="Emptying an instance">
       <p className={PROSE}>
-        Click the banner to select every word in an instance, then press <strong>Delete</strong>. Composer clears the
+        Click the banner to select every word in an instance, then press <strong>Delete</strong>. autolyrics clears the
         timed content and notices the instance is now empty across all its lines, so it strips the group attrs from
         those rows automatically. You're left with empty placeholders that the fill flow above can repopulate later. The
         other instances of the group are untouched.
@@ -97,7 +97,7 @@ const GroupsExtras: React.FC = () => (
         <li>
           <strong>TTML export</strong>: groups round-trip via a custom{" "}
           <span className={INLINE_CODE}>composer:groups</span> registry plus per-line attributes. Other TTML players
-          ignore them; Composer reads them back exactly as saved.
+          ignore them; autolyrics reads them back exactly as saved.
         </li>
       </ul>
     </HelpTopic>

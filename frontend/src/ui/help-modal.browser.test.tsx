@@ -42,12 +42,12 @@ describe("HelpModal initialSection", () => {
 
   it("falls back to getting started when no section is requested", async () => {
     const screen = await render(<HelpModal isOpen onClose={() => {}} />);
-    await expect.element(screen.getByText(/Composer is the lyrics editor for/i)).toBeInTheDocument();
+    await expect.element(screen.getByText(/This is the autolyrics editor/i)).toBeInTheDocument();
   });
 
   it("falls back to getting started when the requested section is unknown", async () => {
     const screen = await render(<HelpModal isOpen initialSection="no-such-section" onClose={() => {}} />);
-    await expect.element(screen.getByText(/Composer is the lyrics editor for/i)).toBeInTheDocument();
+    await expect.element(screen.getByText(/This is the autolyrics editor/i)).toBeInTheDocument();
   });
 
   it("still switches section when a sidebar button is clicked after opening on a section", async () => {
@@ -56,7 +56,7 @@ describe("HelpModal initialSection", () => {
 
     await screen.getByRole("button", { name: "Getting Started", exact: true }).click();
 
-    await expect.element(screen.getByText(/Composer is the lyrics editor for/i)).toBeInTheDocument();
+    await expect.element(screen.getByText(/This is the autolyrics editor/i)).toBeInTheDocument();
     expect(document.querySelector("dialog")?.textContent).not.toContain("Lines and text");
   });
 

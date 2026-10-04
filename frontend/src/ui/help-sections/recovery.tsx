@@ -8,13 +8,13 @@ import { HelpTopic } from "@/ui/help-topic";
 const RecoverySection: React.FC = () => (
   <div className="space-y-5">
     <p className={PROSE}>
-      Composer saves your work as you go. If the app crashes, freezes, or you accidentally close the tab, your lyrics
+      autolyrics saves your work as you go. If the app crashes, freezes, or you accidentally close the tab, your lyrics
       and timing are still there. Here's how to get them back.
     </p>
 
     <HelpTopic title="The app showed an error">
       <p className={PROSE}>
-        Hit <strong>Download my work</strong> on the error screen. You'll get a project file. Reload Composer, head to
+        Hit <strong>Download my work</strong> on the error screen. You'll get a project file. Reload autolyrics, head to
         the Export tab, and click <strong>Import Project</strong> to pick up where you left off.
       </p>
     </HelpTopic>
@@ -60,7 +60,7 @@ const RecoverySection: React.FC = () => (
     <HelpTopic title="Still crashing after reload?">
       <p className={PROSE}>
         Sometimes the saved data itself is the issue. After downloading the backup, the same screen (error page or
-        /recover) shows a <strong>Clear saved data</strong> button. It wipes the autosave so Composer opens fresh next
+        /recover) shows a <strong>Clear saved data</strong> button. It wipes the autosave so autolyrics opens fresh next
         time. Import the file back whenever you're ready. If you can still get into the app, the Export tab's{" "}
         <strong>Clear</strong> button does the same thing.
       </p>

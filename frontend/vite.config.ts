@@ -3,10 +3,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import "vite-react-ssg";
-import { writeSeoAssets } from "./scripts/build-seo-assets";
 import pkg from "./package.json";
-
-const SITE_ORIGIN = "https://composer.betterlyrics.org";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
@@ -22,14 +19,18 @@ export default defineConfig({
   worker: {
     format: "es",
   },
+  // `pnpm dev` talks to the local backend (`autolyrics serve`); in production the backend serves
+  // the built frontend itself, so the API is same-origin.
+  server: {
+    proxy: {
+      "/api": { target: "http://127.0.0.1:8765", changeOrigin: true },
+    },
+  },
   optimizeDeps: {
     exclude: ["onnxruntime-web"],
   },
   ssgOptions: {
     formatting: "none",
     crittersOptions: false,
-    async onFinished(outDir) {
-      await writeSeoAssets(outDir, SITE_ORIGIN);
-    },
   },
 });

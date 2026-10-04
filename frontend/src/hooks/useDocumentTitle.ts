@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useProjectStore } from "@/stores/project";
 
-const BRAND = "Composer";
+const BRAND = "autolyrics";
 const SEPARATOR = "・";
 
 function useDocumentTitle(): void {

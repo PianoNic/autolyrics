@@ -32,7 +32,7 @@ const GroupsSection: React.FC = () => (
           line and pick "Group N lines".
         </li>
         <li>
-          If your selection skips a line by accident, Composer fills the gap and tells you so in the toast. If a line in
+          If your selection skips a line by accident, autolyrics fills the gap and tells you so in the toast. If a line in
           the gap already belongs to another group, it refuses and asks you to fix the selection.
         </li>
         <li>The new group gets a color from the palette and shows up as a banner above the first line.</li>
@@ -43,7 +43,7 @@ const GroupsSection: React.FC = () => (
       <p className={PROSE}>
         Click the banner of the instance you want to copy, then press{" "}
         <InlineKeyBadge keys={getEffectiveKeysArray("timeline.duplicateAsLinked")} /> (or right-click the banner and
-        pick "Add instance at playhead"). Composer picks one of three landings, in this order:
+        pick "Add instance at playhead"). autolyrics picks one of three landings, in this order:
       </p>
       <ul className={`${PROSE} list-disc pl-4 space-y-1`}>
         <li>
@@ -69,7 +69,7 @@ const GroupsSection: React.FC = () => (
         A third route is <strong>Conform</strong>: select contiguous ungrouped lines, right-click, and pick "Conform to
         [Chorus]". The item only shows when the selection is exactly as long as the group. It swaps those lines' text,
         timing, agent and background vocals for the group's, landing where the selection already sat, or at the playhead
-        when those lines had no timing yet. Composer asks before overwriting, and {MOD_KEY} + Z undoes it.
+        when those lines had no timing yet. autolyrics asks before overwriting, and {MOD_KEY} + Z undoes it.
       </p>
     </HelpTopic>
 
@@ -175,17 +175,17 @@ const GroupsSection: React.FC = () => (
       <p className={PROSE}>Two paste flows can land in an instance, and both behave the same way at the destination:</p>
       <ul className={`${PROSE} list-disc pl-4 space-y-1`}>
         <li>
-          Copy every word of an existing instance and paste somewhere. Composer treats the clipboard as a known instance
+          Copy every word of an existing instance and paste somewhere. autolyrics treats the clipboard as a known instance
           and links the destination automatically.
         </li>
         <li>
-          Copy every word of standalone lines whose text and word splits already match an existing template. Composer
+          Copy every word of standalone lines whose text and word splits already match an existing template. autolyrics
           asks "Link as another [Chorus]?". Yes links, No falls back to a regular word paste.
         </li>
       </ul>
       <p className={`${PROSE} mt-2`}>
         In both cases the destination is filled in place if there are enough empty rows starting at the cursor. If there
-        aren't, Composer asks before inserting new rows, since that would shift everything below down by N. Add rows in
+        aren't, autolyrics asks before inserting new rows, since that would shift everything below down by N. Add rows in
         the Edit view first if you want predictable layout.
       </p>
     </HelpTopic>

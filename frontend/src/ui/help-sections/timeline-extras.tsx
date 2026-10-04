@@ -53,7 +53,7 @@ const TimelineExtras: React.FC = () => (
         already flagged).
       </p>
       <p className={`${PROSE} mt-2`}>
-        Composer also scans your lyrics for likely explicit words and shows a suggestions banner above the timeline.
+        autolyrics also scans your lyrics for likely explicit words and shows a suggestions banner above the timeline.
         From there you can mark a suggested word, mark them all, or dismiss ones that are false positives. Explicit
         words export as the <span className={INLINE_CODE}>composer:explicit="true"</span> attribute on the word's TTML
         span.

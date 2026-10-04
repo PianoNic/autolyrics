@@ -8,16 +8,17 @@ describe("AboutSection", () => {
     await expect.element(screen.getByRole("heading", { name: "What it is" })).toBeInTheDocument();
   });
 
-  it("links to the source repository", async () => {
+  it("credits Composer, which the editor is built on", async () => {
     const screen = await render(<AboutSection />);
-    await expect.element(screen.getByRole("link", { name: "GitHub" })).toBeInTheDocument();
+    await expect
+      .element(screen.getByRole("link", { name: "Composer" }))
+      .toHaveAttribute("href", "https://github.com/better-lyrics/composer");
+    await expect.element(screen.getByText(/not affiliated with or endorsed by them/)).toBeInTheDocument();
   });
 
-  it("documents commercial licensing with a contact link", async () => {
+  it("states the license", async () => {
     const screen = await render(<AboutSection />);
-    await expect.element(screen.getByRole("heading", { name: "Commercial use" })).toBeInTheDocument();
-    await expect
-      .element(screen.getByRole("link", { name: "composer@boidu.dev" }))
-      .toHaveAttribute("href", "mailto:composer@boidu.dev");
+    await expect.element(screen.getByRole("heading", { name: "License" })).toBeInTheDocument();
+    await expect.element(screen.getByText(/AGPL v3/)).toBeInTheDocument();
   });
 });

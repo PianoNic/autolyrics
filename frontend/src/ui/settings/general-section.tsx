@@ -2,14 +2,11 @@ import { useConfirm } from "@/stores/confirm-store";
 import { useSettingsStore } from "@/stores/settings";
 import { Button } from "@/ui/button";
 import { SettingsSectionRows } from "@/ui/settings/settings-section-rows";
-import { IconRefresh, IconRoute } from "@tabler/icons-react";
+import { IconRefresh } from "@tabler/icons-react";
 
 // -- General Section ----------------------------------------------------------
 
-const GeneralSection: React.FC<{
-  onResetTour: () => void;
-  onClose: () => void;
-}> = ({ onResetTour, onClose }) => {
+const GeneralSection: React.FC = () => {
   const resetToDefaults = useSettingsStore((s) => s.resetToDefaults);
   const confirm = useConfirm();
 
@@ -27,26 +24,6 @@ const GeneralSection: React.FC<{
   return (
     <div className="divide-y divide-composer-border">
       <SettingsSectionRows section="general" />
-      <div className="flex items-center justify-between py-3">
-        <div className="flex flex-col gap-0.5">
-          <span className="text-sm font-medium text-composer-text">Reset product tour</span>
-          <span className="text-xs text-composer-text-muted">
-            Restart the guided walkthrough that introduces Composer's features.
-          </span>
-        </div>
-        <Button
-          size="sm"
-          variant="secondary"
-          hasIcon
-          onClick={() => {
-            onResetTour();
-            onClose();
-          }}
-        >
-          <IconRoute size={14} />
-          Reset tour
-        </Button>
-      </div>
       <div className="flex items-center justify-between py-3">
         <div className="flex flex-col gap-0.5">
           <span className="text-sm font-medium text-composer-text">Reset to defaults</span>

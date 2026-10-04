@@ -5,7 +5,7 @@ import { TtmlStandardsSection } from "@/ui/help-sections/ttml-standards";
 describe("TtmlStandardsSection", () => {
   it("renders the section content", async () => {
     const screen = await render(<TtmlStandardsSection />);
-    await expect.element(screen.getByRole("heading", { name: "What Composer outputs" })).toBeInTheDocument();
+    await expect.element(screen.getByRole("heading", { name: "What autolyrics outputs" })).toBeInTheDocument();
   });
 
   it("frames the output as a TTML 1 subset, not strict W3C conformance", async () => {

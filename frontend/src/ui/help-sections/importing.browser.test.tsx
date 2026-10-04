@@ -23,9 +23,9 @@ describe("ImportSection", () => {
     await expect.poll(() => screen.container.querySelectorAll("[data-inline-key-badge]").length).toBeGreaterThan(0);
   });
 
-  it("documents the Composer Bridge as an alternative YouTube backend", async () => {
+  it("documents the autolyrics Bridge as an alternative YouTube backend", async () => {
     const screen = await render(<ImportSection />);
-    expect(screen.container.textContent).toContain("Composer Bridge");
+    expect(screen.container.textContent).toContain("autolyrics Bridge");
     expect(screen.container.textContent).toContain("http://localhost:7777");
   });
 

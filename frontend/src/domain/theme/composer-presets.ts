@@ -14,7 +14,7 @@ const COMPOSER_PRESETS: Theme[] = [
     id: "default",
     name: "Default",
     kind: "preset",
-    group: "Composer",
+    group: "autolyrics",
     scheme: "dark",
     desc: "Indigo on charcoal. The house look.",
     tokens: {
@@ -45,7 +45,7 @@ const COMPOSER_PRESETS: Theme[] = [
     id: "light",
     name: "Light",
     kind: "preset",
-    group: "Composer",
+    group: "autolyrics",
     scheme: "light",
     desc: "Seek help",
     tokens: {
@@ -76,7 +76,7 @@ const COMPOSER_PRESETS: Theme[] = [
     id: "high-contrast",
     name: "High contrast",
     kind: "preset",
-    group: "Composer",
+    group: "autolyrics",
     scheme: "dark",
     desc: "Brighter text, harder borders, AA+.",
     tokens: {
@@ -107,7 +107,7 @@ const COMPOSER_PRESETS: Theme[] = [
     id: "harbor",
     name: "Harbor",
     kind: "preset",
-    group: "Composer",
+    group: "autolyrics",
     scheme: "dark",
     desc: "Cool navy, steel-blue accent.",
     tokens: {
@@ -135,7 +135,7 @@ const COMPOSER_PRESETS: Theme[] = [
     id: "moss",
     name: "Moss",
     kind: "preset",
-    group: "Composer",
+    group: "autolyrics",
     scheme: "dark",
     desc: "Forest greens, warm sap accent.",
     tokens: {
@@ -163,7 +163,7 @@ const COMPOSER_PRESETS: Theme[] = [
     id: "rosewater",
     name: "Rosewater",
     kind: "preset",
-    group: "Composer",
+    group: "autolyrics",
     scheme: "dark",
     desc: "Warm plum dark, dusty rose accent.",
     tokens: {
@@ -191,7 +191,7 @@ const COMPOSER_PRESETS: Theme[] = [
     id: "graphite",
     name: "Graphite",
     kind: "preset",
-    group: "Composer",
+    group: "autolyrics",
     scheme: "dark",
     desc: "Pure monochrome. No hue.",
     tokens: {
@@ -219,7 +219,7 @@ const COMPOSER_PRESETS: Theme[] = [
     id: "ember",
     name: "Ember",
     kind: "preset",
-    group: "Composer",
+    group: "autolyrics",
     scheme: "dark",
     desc: "Warm coals, amber glow.",
     tokens: {
@@ -247,7 +247,7 @@ const COMPOSER_PRESETS: Theme[] = [
     id: "tide",
     name: "Tide",
     kind: "preset",
-    group: "Composer",
+    group: "autolyrics",
     scheme: "dark",
     desc: "Deep water, teal accent.",
     tokens: {

@@ -7,7 +7,6 @@ import { HELP_CONTENT_SCROLLER_CSS, installStyleSheet } from "@/test/browser-css
 import { allowConsole } from "@/test/console-guard";
 import { settleFrames } from "@/test/frame-steps";
 import { render } from "@/test/render";
-import { TOUR_SEEN_KEY } from "@/tour/use-tour";
 
 const bridgeSectionVisible = () => document.querySelector('[data-testid="bridge-section"]') !== null;
 
@@ -30,12 +29,11 @@ describe("App", () => {
   it("renders the app header and tab bar", async () => {
     useProjectStore.setState({ activeTab: "import" });
     const screen = await render(<App />);
-    expect(screen.container.textContent).toContain("Composer");
+    expect(screen.container.textContent).toContain("autolyrics");
     expect(screen.container.querySelector("nav")).not.toBeNull();
   });
 
   it("switches the active tab when a tab button is clicked", async () => {
-    localStorage.setItem(TOUR_SEEN_KEY, "true");
     useProjectStore.setState({ activeTab: "import" });
     const screen = await render(<App />);
     const editButton = screen.container.querySelector('[data-tour="tab-edit"]') as HTMLButtonElement;
@@ -47,7 +45,6 @@ describe("App", () => {
   it("reopening settings normally resets the section, not stuck on the last highlighted one", async () => {
     allowConsole(/cannot be a descendant of/);
     allowConsole(/cannot contain a nested/);
-    localStorage.setItem(TOUR_SEEN_KEY, "true");
     await render(<App />);
 
     useUIStore.getState().openSettings({ target: { setting: "youtubeBridge" } });
@@ -64,7 +61,6 @@ describe("App", () => {
   it("regression: reopening help resets the section instead of restoring the last one viewed", async () => {
     allowConsole(/cannot be a descendant of/);
     allowConsole(/cannot contain a nested/);
-    localStorage.setItem(TOUR_SEEN_KEY, "true");
     await render(<App />);
 
     helpButton().click();
@@ -83,7 +79,6 @@ describe("App", () => {
   });
 
   it("wires the frame loop so a store write wakes it", async () => {
-    localStorage.setItem(TOUR_SEEN_KEY, "true");
     await render(<App />);
 
     let frames = 0;
@@ -103,7 +98,6 @@ describe("App", () => {
     allowConsole(/cannot be a descendant of/);
     allowConsole(/cannot contain a nested/);
     installStyleSheet(HELP_CONTENT_SCROLLER_CSS);
-    localStorage.setItem(TOUR_SEEN_KEY, "true");
     const screen = await render(<App />);
     const helpViewport = () =>
       document.querySelector("[data-help-content]")?.closest<HTMLElement>("[data-overlayscrollbars-viewport]") ?? null;
@@ -135,7 +129,6 @@ describe("App", () => {
   it("returns to the same Help search after a setting link trip from a result", async () => {
     allowConsole(/cannot be a descendant of/);
     allowConsole(/cannot contain a nested/);
-    localStorage.setItem(TOUR_SEEN_KEY, "true");
     const screen = await render(<App />);
 
     useUIStore.getState().openHelp();

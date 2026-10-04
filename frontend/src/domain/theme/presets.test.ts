@@ -35,9 +35,9 @@ describe("PRESETS shape", () => {
     }
   });
 
-  it("groups presets into Composer and Classics", () => {
+  it("groups presets into autolyrics and Classics", () => {
     const groups = new Set(PRESETS.map((p) => p.group));
-    expect(groups).toEqual(new Set(["Composer", "Classics"]));
+    expect(groups).toEqual(new Set(["autolyrics", "Classics"]));
   });
 });
 

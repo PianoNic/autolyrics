@@ -27,7 +27,7 @@ const GROUP_GRID = "grid grid-cols-3 gap-2.5";
 
 const GROUP_LABEL = "font-mono text-[10.5px] tracking-wider text-composer-text-faint select-none";
 
-const COMPOSER_PRESETS = PRESETS.filter((theme) => theme.group === "Composer");
+const COMPOSER_PRESETS = PRESETS.filter((theme) => theme.group === "autolyrics");
 
 const CLASSIC_PRESETS = PRESETS.filter((theme) => theme.group === "Classics");
 

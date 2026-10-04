@@ -1,3 +1,4 @@
+import { useImportFromJob } from "@/auto/editor/use-import-from-job";
 import { AudioEngine } from "@/audio/audio-engine";
 import { AudioPlayer } from "@/audio/audio-player";
 import { useAutoSeparate } from "@/hooks/useAutoSeparate";
@@ -14,9 +15,6 @@ import { wireFrameLoop } from "@/lib/frame-loop-wiring";
 import { useAudioStore } from "@/stores/audio";
 import { useProjectStore } from "@/stores/project";
 import { useUIStore } from "@/stores/ui";
-import { GuideCard } from "@/tour/guide-card";
-import { resetTour, useTour } from "@/tour/use-tour";
-import "@/tour/tour-theme.css";
 import { AppHeader } from "@/ui/app-header";
 import { ConfirmModalHost } from "@/ui/confirm-modal";
 import { DivergenceModalHost } from "@/ui/divergence-modal";
@@ -34,7 +32,7 @@ import { SyncPanel } from "@/views/sync/sync-panel";
 import { TimelinePanel } from "@/views/timeline/timeline-panel";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { LazyMotion, domAnimation } from "motion/react";
-import { Activity, useCallback, useEffect, useRef } from "react";
+import { Activity, useCallback, useEffect } from "react";
 import { Toaster } from "sonner";
 
 const TABS_WITH_PLAYER = ["import", "edit", "languages", "sync", "timeline", "preview"];
@@ -56,21 +54,7 @@ const AppContent: React.FC = () => {
   const settingsOpen = useUIStore((s) => s.settingsOpen);
   const openSettings = useUIStore((s) => s.openSettings);
   const closeSettings = useUIStore((s) => s.closeSettings);
-  const openBestPractices = useCallback(() => openHelp("best-practices"), [openHelp]);
-  const { startTour, resumeOrStartTour, shouldShowTour, guideCard, skipGuideCard } = useTour({
-    onOpenBestPractices: openBestPractices,
-  });
-  const startTourRef = useRef(startTour);
-  startTourRef.current = startTour;
-
   const showPlayer = source && TABS_WITH_PLAYER.includes(activeTab);
-
-  // Auto-start quick tour on first visit
-  useEffect(() => {
-    if (!shouldShowTour) return;
-    const timer = setTimeout(() => startTourRef.current(), 500);
-    return () => clearTimeout(timer);
-  }, [shouldShowTour]);
 
   useEffect(() => wireFrameLoop(), []);
 
@@ -80,6 +64,7 @@ const AppContent: React.FC = () => {
   useImportFromQuery();
   useImportFromYouTube();
   usePanicRecovery();
+  useImportFromJob();
   useAutoSeparate();
   useDocumentTitle();
   useVocalOnsetSnapPoints();
@@ -98,7 +83,7 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen bg-composer-bg text-composer-text">
-      <AppHeader onSettingsOpen={() => openSettings()} onHelpOpen={() => openHelp()} onTourStart={resumeOrStartTour} />
+      <AppHeader onSettingsOpen={() => openSettings()} onHelpOpen={() => openHelp()} />
       <HelpModal
         key={
           helpOpen
@@ -115,7 +100,6 @@ const AppContent: React.FC = () => {
         key={settingsOpen ? "settings-open" : "settings-closed"}
         isOpen={settingsOpen}
         onClose={closeSettings}
-        onResetTour={resetTour}
       />
       <TabBar />
       <main className="relative flex-1 overflow-hidden">
@@ -157,7 +141,6 @@ const AppContent: React.FC = () => {
       </main>
       {source && <AudioEngine />}
       {showPlayer && <AudioPlayer />}
-      <GuideCard state={guideCard} onSkip={skipGuideCard} />
     </div>
   );
 };

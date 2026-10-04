@@ -3,7 +3,7 @@ import { renderHook } from "vitest-browser-react";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { useProjectStore } from "@/stores/project";
 
-const DEFAULT_TITLE = "Composer ・ Free TTML Lyrics Editor";
+const DEFAULT_TITLE = "autolyrics ・ Free TTML Lyrics Editor";
 
 describe("useDocumentTitle", () => {
   let originalTitle: string;
@@ -23,10 +23,10 @@ describe("useDocumentTitle", () => {
     expect(document.title).toBe(DEFAULT_TITLE);
   });
 
-  it("sets document.title to 'Composer ・ {title}' when a song is loaded", async () => {
+  it("sets document.title to 'autolyrics ・ {title}' when a song is loaded", async () => {
     useProjectStore.setState((s) => ({ metadata: { ...s.metadata, title: "Bohemian Rhapsody" } }));
     await renderHook(() => useDocumentTitle());
-    expect(document.title).toBe("Composer ・ Bohemian Rhapsody");
+    expect(document.title).toBe("autolyrics ・ Bohemian Rhapsody");
   });
 
   it("updates document.title reactively when metadata.title changes", async () => {
@@ -35,16 +35,16 @@ describe("useDocumentTitle", () => {
     expect(document.title).toBe(DEFAULT_TITLE);
 
     useProjectStore.getState().setMetadata({ title: "Imagine" });
-    await expect.poll(() => document.title).toBe("Composer ・ Imagine");
+    await expect.poll(() => document.title).toBe("autolyrics ・ Imagine");
 
     useProjectStore.getState().setMetadata({ title: "Let It Be" });
-    await expect.poll(() => document.title).toBe("Composer ・ Let It Be");
+    await expect.poll(() => document.title).toBe("autolyrics ・ Let It Be");
   });
 
   it("restores the captured default when metadata.title is cleared", async () => {
     useProjectStore.setState((s) => ({ metadata: { ...s.metadata, title: "Hey Jude" } }));
     await renderHook(() => useDocumentTitle());
-    expect(document.title).toBe("Composer ・ Hey Jude");
+    expect(document.title).toBe("autolyrics ・ Hey Jude");
 
     useProjectStore.getState().setMetadata({ title: "" });
     await expect.poll(() => document.title).toBe(DEFAULT_TITLE);
@@ -59,7 +59,7 @@ describe("useDocumentTitle", () => {
   it("restores the captured default on unmount", async () => {
     useProjectStore.setState((s) => ({ metadata: { ...s.metadata, title: "Yesterday" } }));
     const { unmount } = await renderHook(() => useDocumentTitle());
-    expect(document.title).toBe("Composer ・ Yesterday");
+    expect(document.title).toBe("autolyrics ・ Yesterday");
 
     unmount();
     expect(document.title).toBe(DEFAULT_TITLE);

@@ -5,9 +5,9 @@ import { HelpTopic } from "@/ui/help-topic";
 
 const TtmlStandardsSection: React.FC = () => (
   <div className="space-y-5">
-    <HelpTopic title="What Composer outputs">
+    <HelpTopic title="What autolyrics outputs">
       <p className={PROSE}>
-        Composer emits a restricted subset of{" "}
+        autolyrics emits a restricted subset of{" "}
         <a
           href="https://www.w3.org/TR/2018/REC-ttml1-20181108/"
           target="_blank"
@@ -33,7 +33,7 @@ const TtmlStandardsSection: React.FC = () => (
     <HelpTopic title="Foreign-namespace extensions">
       <p className={PROSE}>
         For features that don't have a place in the core TTML 1 vocabulary, like linked groups and per-instance
-        metadata, Composer uses the foreign-namespace extension mechanism in{" "}
+        metadata, autolyrics uses the foreign-namespace extension mechanism in{" "}
         <a
           href="https://www.w3.org/TR/2018/REC-ttml1-20181108/#extension-vocabulary-overview"
           target="_blank"
@@ -47,7 +47,7 @@ const TtmlStandardsSection: React.FC = () => (
         vocabulary. That's the W3C-sanctioned way to add application-specific data without breaking other TTML tooling.
       </p>
       <p className={PROSE}>
-        Composer's namespace URI is <span className={INLINE_CODE}>https://composer.betterlyrics.org/ttml</span>. Custom
+        The namespace URI, kept from Composer so files stay compatible, is <span className={INLINE_CODE}>https://composer.betterlyrics.org/ttml</span>. Custom
         attributes show up as <span className={INLINE_CODE}>composer:groupId</span>,{" "}
         <span className={INLINE_CODE}>composer:instanceIdx</span>, and so on, on the root{" "}
         <span className={INLINE_CODE}>&lt;tt&gt;</span> element and on <span className={INLINE_CODE}>&lt;p&gt;</span>{" "}
@@ -59,7 +59,7 @@ const TtmlStandardsSection: React.FC = () => (
 
     <HelpTopic title="Why this matters">
       <p className={PROSE}>
-        Most TTML 1 tooling can read a Composer file. Tools that don't recognize the{" "}
+        Most TTML 1 tooling can read a autolyrics file. Tools that don't recognize the{" "}
         <span className={INLINE_CODE}>composer:</span> namespace can safely skip the extensions: foreign attributes get
         pruned during validation (per{" "}
         <a

@@ -3,10 +3,10 @@ import { Button } from "@/ui/button";
 import { ClearRecoveryButton } from "@/ui/clear-recovery-button";
 import { Scroll } from "@/ui/scroll";
 import { describeError, type ErrorPresentation, safeStringify } from "@/pages/error-presentation";
-import { PageHead } from "@/seo/page-head";
+import { PageTitle } from "@/ui/page-title";
 import { IconChevronDown, IconChevronRight, IconDownload, IconHome2, IconRefresh } from "@tabler/icons-react";
 import { useState } from "react";
-import { useLocation, useRouteError } from "react-router-dom";
+import { useRouteError } from "react-router-dom";
 
 // -- Constants -----------------------------------------------------------------
 
@@ -34,7 +34,7 @@ const GoHomeButton: React.FC<{ primary: boolean }> = ({ primary }) => (
 type RecoveryStatus = "idle" | "downloading" | "success" | "empty" | "failed";
 
 const RECOVERY_MESSAGES: Partial<Record<RecoveryStatus, string>> = {
-  success: "Saved. Open Composer, head to the Export tab, and click Import Project to keep going.",
+  success: "Saved. Open the editor, head to the Export tab, and click Import Project to keep going.",
   empty: "Nothing saved in this browser yet.",
   failed: "Couldn't reach your save. Try opening /recover in a fresh tab.",
 };
@@ -71,7 +71,7 @@ const ErrorActions: React.FC<{ homeIsPrimary: boolean }> = ({ homeIsPrimary }) =
       </div>
       {recoveryMessage && <p className="text-xs text-composer-text-muted select-text">{recoveryMessage}</p>}
       {recoveryStatus === "success" && (
-        <ClearRecoveryButton clearedMessage="Cleared. Reload Composer to start fresh." />
+        <ClearRecoveryButton clearedMessage="Cleared. Reload autolyrics to start fresh." />
       )}
     </>
   );
@@ -143,13 +143,12 @@ const ErrorFallbackPanel: React.FC<{ details: ErrorPresentation }> = ({ details 
 const ErrorFallback: React.FC = () => {
   const error = useRouteError();
   const details = describeError(error);
-  const { pathname } = useLocation();
 
   console.error(LOG_PREFIX, "route error", error);
 
   return (
     <>
-      <PageHead title={`${details.title} ・ Composer`} description={details.subtitle} path={pathname} noindex />
+      <PageTitle title={`${details.title} ・ autolyrics`} />
       <ErrorFallbackPanel details={details} />
     </>
   );

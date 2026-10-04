@@ -14,7 +14,7 @@ describe("RecoverPanel", () => {
     await expect.element(screen.getByText(/Nothing saved in this browser yet/)).toBeInTheDocument();
     const buttons = Array.from(screen.container.querySelectorAll("button")).map((b) => b.textContent?.trim() ?? "");
     expect(buttons.some((t) => /Download/.test(t))).toBe(false);
-    expect(buttons.some((t) => /Back to Composer/.test(t))).toBe(true);
+    expect(buttons.some((t) => /Back to the editor/.test(t))).toBe(true);
   });
 
   it("auto-downloads and shows project metadata when a project is present", async () => {

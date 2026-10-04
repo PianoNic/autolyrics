@@ -1,3 +1,4 @@
+import { useJobLinkStore } from "@/auto/editor/job-link-store";
 import { holdFrames, wake } from "@/lib/frame-loop";
 import { useAudioStore } from "@/stores/audio";
 import { useAuthStore } from "@/stores/auth";
@@ -81,6 +82,7 @@ function wireFrameLoop(): () => void {
   const unsubscribes = [
     useAudioStore.subscribe(syncAudio),
     useAuthStore.subscribe(wakeFromThisWiring),
+    useJobLinkStore.subscribe(wakeFromThisWiring),
     useConfirmStore.subscribe(wakeFromThisWiring),
     useDivergenceStore.subscribe(wakeFromThisWiring),
     useImportModalStore.subscribe(wakeFromThisWiring),

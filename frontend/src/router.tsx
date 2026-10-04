@@ -1,97 +1,26 @@
 import { ErrorFallback } from "@/pages/error-fallback";
-import { GUIDE_SLUGS } from "@/pages/guides/slugs";
 import type { RouteRecord } from "vite-react-ssg";
 
 const errorElement = <ErrorFallback />;
 
+// The automatic flow is the app; the Composer editor is one optional step away from a job.
 const routes: RouteRecord[] = [
   {
     path: "/",
+    lazy: async () => ({ Component: (await import("@/auto/pages/start-page")).default }),
+    entry: "src/auto/pages/start-page.tsx",
+    errorElement,
+  },
+  {
+    path: "/jobs/:jobId",
+    lazy: async () => ({ Component: (await import("@/auto/pages/job-page")).default }),
+    entry: "src/auto/pages/job-page.tsx",
+    errorElement,
+  },
+  {
+    path: "/editor",
     lazy: async () => ({ Component: (await import("@/pages/home")).default }),
     entry: "src/pages/home.tsx",
-    errorElement,
-  },
-  {
-    path: "/ttml-maker",
-    lazy: async () => ({ Component: (await import("@/pages/landing/ttml-maker")).default }),
-    entry: "src/pages/landing/ttml-maker.tsx",
-    errorElement,
-  },
-  {
-    path: "/ttml-editor",
-    lazy: async () => ({ Component: (await import("@/pages/landing/ttml-editor")).default }),
-    entry: "src/pages/landing/ttml-editor.tsx",
-    errorElement,
-  },
-  {
-    path: "/ttml-generator",
-    lazy: async () => ({ Component: (await import("@/pages/landing/ttml-generator")).default }),
-    entry: "src/pages/landing/ttml-generator.tsx",
-    errorElement,
-  },
-  {
-    path: "/apple-music-synced-lyrics",
-    lazy: async () => ({
-      Component: (await import("@/pages/landing/apple-music-synced-lyrics")).default,
-    }),
-    entry: "src/pages/landing/apple-music-synced-lyrics.tsx",
-    errorElement,
-  },
-  {
-    path: "/spotify-synced-lyrics",
-    lazy: async () => ({
-      Component: (await import("@/pages/landing/spotify-synced-lyrics")).default,
-    }),
-    entry: "src/pages/landing/spotify-synced-lyrics.tsx",
-    errorElement,
-  },
-  {
-    path: "/lrc-to-ttml",
-    lazy: async () => ({ Component: (await import("@/pages/converters/lrc-to-ttml")).default }),
-    entry: "src/pages/converters/lrc-to-ttml.tsx",
-    errorElement,
-  },
-  {
-    path: "/srt-to-ttml",
-    lazy: async () => ({ Component: (await import("@/pages/converters/srt-to-ttml")).default }),
-    entry: "src/pages/converters/srt-to-ttml.tsx",
-    errorElement,
-  },
-  {
-    path: "/qrc-to-ttml",
-    lazy: async () => ({ Component: (await import("@/pages/converters/qrc-to-ttml")).default }),
-    entry: "src/pages/converters/qrc-to-ttml.tsx",
-    errorElement,
-  },
-  {
-    path: "/ttml-to-lrc",
-    lazy: async () => ({ Component: (await import("@/pages/converters/ttml-to-lrc")).default }),
-    entry: "src/pages/converters/ttml-to-lrc.tsx",
-    errorElement,
-  },
-  {
-    path: "/ttml-to-srt",
-    lazy: async () => ({ Component: (await import("@/pages/converters/ttml-to-srt")).default }),
-    entry: "src/pages/converters/ttml-to-srt.tsx",
-    errorElement,
-  },
-  {
-    path: "/ttml-to-qrc",
-    lazy: async () => ({ Component: (await import("@/pages/converters/ttml-to-qrc")).default }),
-    entry: "src/pages/converters/ttml-to-qrc.tsx",
-    errorElement,
-  },
-  {
-    path: "/guides",
-    lazy: async () => ({ Component: (await import("@/pages/guides/guides-index")).default }),
-    entry: "src/pages/guides/guides-index.tsx",
-    errorElement,
-  },
-  {
-    path: "/guides/:slug",
-    lazy: async () => ({ Component: (await import("@/pages/guides/guide-page")).default }),
-    entry: "src/pages/guides/guide-page.tsx",
-    getStaticPaths: () => GUIDE_SLUGS.map((slug) => `/guides/${slug}`),
     errorElement,
   },
   {

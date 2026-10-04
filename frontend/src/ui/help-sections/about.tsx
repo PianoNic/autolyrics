@@ -1,6 +1,10 @@
 import { PROSE } from "@/ui/typography";
 import { HelpTopic } from "@/ui/help-topic";
 
+// -- Constants ----------------------------------------------------------------
+
+const LINK = "text-composer-text underline underline-offset-2 hover:text-composer-text-bright";
+
 // -- About --------------------------------------------------------------------
 
 const AboutSection: React.FC = () => (
@@ -8,10 +12,10 @@ const AboutSection: React.FC = () => (
     <div className="relative -mx-6 -mt-6">
       <div className="absolute inset-0 bg-gradient-to-b from-composer-accent/20 to-transparent pointer-events-none" />
       <div className="relative px-6 pt-7 pb-8 flex items-center gap-5">
-        <img src="/logo.svg" alt="Composer" className="size-14 shrink-0" />
+        <img src="/logo.svg" alt="" className="size-14 shrink-0" />
         <div className="space-y-1">
-          <h2 className="text-2xl font-semibold leading-tight tracking-tight">Composer</h2>
-          <p className="text-sm text-composer-text-secondary">The lyrics editor for Better Lyrics.</p>
+          <h2 className="text-2xl font-semibold leading-tight tracking-tight">autolyrics</h2>
+          <p className="text-sm text-composer-text-secondary">Word-synced lyrics from a song link.</p>
           <p className="text-xs text-composer-text-muted font-mono mt-2">v{__APP_VERSION__}</p>
         </div>
       </div>
@@ -19,88 +23,33 @@ const AboutSection: React.FC = () => (
 
     <HelpTopic title="What it is">
       <p className={PROSE}>
-        Free and open-source, runs entirely in your browser. No accounts, nothing leaves your machine. Bring your audio
-        and lyrics, sync them up, export TTML.
+        Runs on your own machine. A local backend finds the song, its lyrics and the vocals, times every word and
+        checks the text with DeepSeek; this editor is where you adjust anything it got wrong.
       </p>
     </HelpTopic>
 
-    <HelpTopic title="Open source">
+    <HelpTopic title="Built on Composer">
       <p className={PROSE}>
-        AGPL v3. Source on{" "}
-        <a
-          href="https://github.com/better-lyrics/composer"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-composer-text underline underline-offset-2 hover:text-composer-text-bright"
-        >
-          GitHub
-        </a>
-        . PRs welcome if you spot something to fix.
-      </p>
-    </HelpTopic>
-
-    <HelpTopic title="Commercial use">
-      <p className={PROSE}>
-        Composer is also available under a commercial license that removes the AGPL copyleft obligations and covers
-        commercial use of its output, such as a label or distributor publishing generated lyrics in a release. For
-        commercial or enterprise licensing, reach out to{" "}
-        <a
-          href="mailto:composer@boidu.dev"
-          className="text-composer-text underline underline-offset-2 hover:text-composer-text-bright"
-        >
-          composer@boidu.dev
-        </a>
-        .
-      </p>
-    </HelpTopic>
-
-    <HelpTopic title="Community">
-      <ul className={`${PROSE} list-disc pl-4 space-y-1`}>
-        <li>
-          <a
-            href="https://discord.gg/UsHE3d5fWF"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-composer-text underline underline-offset-2 hover:text-composer-text-bright"
-          >
-            Discord
-          </a>{" "}
-          for questions and chat.
-        </li>
-        <li>
-          <a
-            href="https://github.com/better-lyrics/composer/issues/new/choose"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-composer-text underline underline-offset-2 hover:text-composer-text-bright"
-          >
-            File an issue
-          </a>{" "}
-          if something's broken.
-        </li>
-      </ul>
-    </HelpTopic>
-
-    <HelpTopic title="Made by">
-      <p className={PROSE}>
-        <a
-          href="https://boidu.dev"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-composer-text underline underline-offset-2 hover:text-composer-text-bright"
-        >
+        The editor is{" "}
+        <a href="https://github.com/better-lyrics/composer" target="_blank" rel="noopener noreferrer" className={LINK}>
+          Composer
+        </a>{" "}
+        by{" "}
+        <a href="https://boidu.dev" target="_blank" rel="noopener noreferrer" className={LINK}>
           Boidu
-        </a>
-        , with thanks to everyone in the{" "}
-        <a
-          href="https://betterlyrics.org"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-composer-text underline underline-offset-2 hover:text-composer-text-bright"
-        >
+        </a>{" "}
+        and the{" "}
+        <a href="https://betterlyrics.org" target="_blank" rel="noopener noreferrer" className={LINK}>
           Better Lyrics
         </a>{" "}
-        community who's tested it, reported bugs, and put up with the rough edges.
+        community. autolyrics is a modified version and is not affiliated with or endorsed by them; please report
+        autolyrics problems here, not to Composer.
+      </p>
+    </HelpTopic>
+
+    <HelpTopic title="License">
+      <p className={PROSE}>
+        AGPL v3, like Composer. You can get the complete source of this version and change it under the same terms.
       </p>
     </HelpTopic>
   </div>

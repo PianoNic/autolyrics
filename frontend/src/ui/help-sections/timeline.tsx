@@ -57,7 +57,7 @@ const TimelineSection: React.FC = () => (
 
     <HelpTopic title="Audio scrub preview">
       <p className={PROSE}>
-        When you scrub the playhead (drag it, or scroll the wheel over the waveform), Composer plays a short bit of
+        When you scrub the playhead (drag it, or scroll the wheel over the waveform), autolyrics plays a short bit of
         audio at the playhead position, at normal pitch. It helps you find a specific word by ear without having to
         press play. Faster scrubs play more snippets, slower scrubs play fewer. The preview matches your main volume and
         stays silent when the audio is muted. If it gets in the way, turn off{" "}
@@ -200,7 +200,7 @@ const TimelineSection: React.FC = () => (
 
     <HelpTopic title="Snap points and marker mode">
       <p className={PROSE}>
-        Two kinds of snap marker can sit over the waveform. Dashed guide lines are vocal onsets, which Composer detects
+        Two kinds of snap marker can sit over the waveform. Dashed guide lines are vocal onsets, which autolyrics detects
         from the separated vocal stem, so they only show up once you have split out vocals and turned on "Snap to vocal
         onsets" in the stem dropdown. Solid pins are custom snap points you place yourself. Both pull word edges in the
         way the magnet does, and custom points keep snapping even when Snap and onset snapping are both off.

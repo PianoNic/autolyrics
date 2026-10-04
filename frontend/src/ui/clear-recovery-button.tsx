@@ -20,7 +20,7 @@ interface ClearRecoveryButtonProps {
 
 const ClearRecoveryButton: React.FC<ClearRecoveryButtonProps> = ({
   hint,
-  clearedMessage = "Cleared. Reload Composer to start fresh.",
+  clearedMessage = "Cleared. Reload autolyrics to start fresh.",
 }) => {
   const [status, setStatus] = useState<ClearStatus>("idle");
 
@@ -54,7 +54,7 @@ const ClearRecoveryButton: React.FC<ClearRecoveryButtonProps> = ({
       : status === "cleared"
         ? clearedMessage
         : status === "failed"
-          ? "Couldn't clear the save. Try again or open Composer's Export tab and use Clear."
+          ? "Couldn't clear the save. Try again or open the editor's Export tab and use Clear."
           : null;
 
   return (

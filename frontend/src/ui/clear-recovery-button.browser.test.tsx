@@ -20,7 +20,7 @@ describe("ClearRecoveryButton", () => {
     expect((await readRecoveryMetadata()).found).toBe(true);
 
     await screen.getByRole("button", { name: /Confirm clear/ }).click();
-    await expect.element(screen.getByText(/Reload Composer to start fresh/)).toBeInTheDocument();
+    await expect.element(screen.getByText(/Reload autolyrics to start fresh/)).toBeInTheDocument();
     expect((await readRecoveryMetadata()).found).toBe(false);
   });
 

@@ -10,37 +10,8 @@ import { HelpTopic } from "@/ui/help-topic";
 const GettingStartedSection: React.FC = () => (
   <div className="space-y-5">
     <p className={PROSE}>
-      Composer is the lyrics editor for{" "}
-      <a
-        href="https://betterlyrics.org"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-composer-text underline underline-offset-2 hover:text-composer-text-bright"
-      >
-        Better Lyrics
-      </a>
-      . It guides you through four steps to create synced lyrics. Follow the tabs left-to-right for a guided experience,
-      or jump straight to the Timeline for a DAW-like workflow.
-      <br /> As of now, Composer is still in early access, so expect some rough edges. If you run into any issues or
-      have feedback, please reach out on{" "}
-      <a
-        href="https://discord.gg/UsHE3d5fWF"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-composer-text underline underline-offset-2 hover:text-composer-text-bright"
-      >
-        Discord
-      </a>{" "}
-      or submit an issue on{" "}
-      <a
-        href="https://github.com/better-lyrics/composer/issues/new/choose"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-composer-text underline underline-offset-2 hover:text-composer-text-bright"
-      >
-        GitHub
-      </a>
-      .
+      This is the autolyrics editor, built on Composer. autolyrics opens finished songs on the Timeline with every
+      word already timed; the tabs left-to-right are the manual way through: import, edit, sync and export.
     </p>
 
     <div className="space-y-4">

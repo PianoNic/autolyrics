@@ -1,5 +1,5 @@
 import { downloadRecoveryFile, readRecoveryMetadata, type RecoveryResult } from "@/lib/recovery";
-import { PageHead } from "@/seo/page-head";
+import { PageTitle } from "@/ui/page-title";
 import { Button } from "@/ui/button";
 import { ClearRecoveryButton } from "@/ui/clear-recovery-button";
 import { ClientOnly } from "@/ui/client-only";
@@ -9,8 +9,7 @@ import { useEffect, useState } from "react";
 
 // -- Constants -----------------------------------------------------------------
 
-const TITLE = "Recover Your Work ・ Composer";
-const DESCRIPTION = "Grab the backup Composer saved in this browser and pick up where you left off.";
+const TITLE = "Recover Your Work ・ autolyrics";
 
 // -- Helpers -------------------------------------------------------------------
 
@@ -103,8 +102,8 @@ const RecoverPanel: React.FC = () => {
         <div className="flex flex-col gap-1.5">
           <h1 className="text-2xl font-semibold text-composer-text">Recover your work</h1>
           <p className="text-sm text-composer-text-secondary leading-relaxed">
-            Composer saves your work automatically as you go. This page grabs that backup and downloads it as a file.
-            Open Composer, head to the Export tab, and click Import Project to pick up where you left off.
+            The editor saves your work automatically as you go. This page grabs that backup and downloads it as a file.
+            Open the editor, head to the Export tab, and click Import Project to pick up where you left off.
           </p>
         </div>
 
@@ -153,7 +152,7 @@ const RecoverPanel: React.FC = () => {
           )}
           <Button variant="secondary" hasIcon onClick={() => window.location.assign("/")}>
             <IconHome2 size={16} />
-            Back to Composer
+            Back to the editor
           </Button>
           {state.phase === "failed" && (
             <Button variant="ghost" hasIcon onClick={() => window.location.reload()}>
@@ -165,8 +164,8 @@ const RecoverPanel: React.FC = () => {
 
         {state.phase === "downloaded" && (
           <ClearRecoveryButton
-            hint="Use this if Composer keeps crashing on the same project. Wipes the autosave so the app opens fresh. Make sure your download succeeded first."
-            clearedMessage="Cleared. Open Composer to start fresh."
+            hint="Use this if the editor keeps crashing on the same project. Wipes the autosave so the app opens fresh. Make sure your download succeeded first."
+            clearedMessage="Cleared. Open the editor to start fresh."
           />
         )}
       </div>
@@ -185,7 +184,7 @@ const RecoverFallback: React.FC = () => (
 const RecoverPage: React.FC = () => {
   return (
     <>
-      <PageHead title={TITLE} description={DESCRIPTION} path="/recover" />
+      <PageTitle title={TITLE} />
       <ClientOnly fallback={<RecoverFallback />}>
         <RecoverPanel />
       </ClientOnly>

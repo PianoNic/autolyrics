@@ -4,8 +4,8 @@
   "version": "1.45.0",
   "type": "module",
   "scripts": {
-    "dev": "vite-react-ssg dev",
-    "build": "tsc -b && vite-react-ssg build",
+    "dev": "vite",
+    "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "pnpm test:unit && pnpm test:component",
     "test:watch": "vitest",
@@ -34,7 +34,6 @@
     "@wavesurfer/react": "^1.0.12",
     "clsx": "^2.1.1",
     "diff": "^9.0.0",
-    "driver.js": "^1.8.0",
     "lit": "^3.3.3",
     "motion": "^13.2.0",
     "music-metadata": "^11.15.0",

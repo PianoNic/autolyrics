@@ -2,7 +2,6 @@ import { instanceBounds } from "@/domain/instance/bounds";
 import { instanceCount, instanceIndicesOf, linesOfInstance } from "@/domain/instance/enumerate";
 import { isLinked } from "@/domain/instance/predicates";
 import { manualBackgroundWordEdit } from "@/domain/line/background";
-import { effectiveBounds } from "@/domain/line/bounds";
 import type { ReadableLine } from "@/domain/line/effective-words";
 import type { LyricLine } from "@/domain/line/model";
 import { trackField, trackWords } from "@/domain/line/tracks";
@@ -20,14 +19,14 @@ import { setBgWordBoundary } from "@/utils/timing/bg-word-timing";
 import { setWordBoundary } from "@/utils/timing/word-timing";
 import { handleWordChangeWithDivergenceCheck } from "@/utils/word-divergence-flow";
 import { mergeWordText } from "@/utils/word-merge";
-import { centerTimeScrollLeft, revealTimeScrollLeft } from "@/views/timeline/coords";
+import { revealTimeScrollLeft } from "@/views/timeline/coords";
 import { copyInstanceToClipboardAndPreview } from "@/views/timeline/copy-instance-to-clipboard";
 import { decideAddInstancePlacement } from "@/views/timeline/decide-add-instance-placement";
 import { deleteGroupWithConfirm } from "@/views/timeline/delete-group-with-confirm";
 import { resolveExplicitSelectionToggle } from "@/views/timeline/explicit-selection-toggle";
 import { GROUP_HEADER_HEIGHT } from "@/views/timeline/group-header-row";
 import { createGroupFromSelection, fillSelectionGaps, instanceToTemplate } from "@/views/timeline/group-ops";
-import { scrollToInstanceHeader } from "@/views/timeline/scroll-helpers";
+import { revealTimeInTimeline, scrollToInstanceHeader } from "@/views/timeline/scroll-helpers";
 import { adjacentSnapPoint } from "@/views/timeline/snap-marker-math";
 import { splitLinesIntoWords } from "@/views/timeline/split-lines-into-words";
 import { GUTTER_WIDTH, WAVEFORM_HEIGHT, useTimelineStore } from "@/views/timeline/timeline-store";
@@ -266,49 +265,9 @@ function useTimelineKeyboard(
           e.preventDefault();
           const scrollContainer = scrollContainerRef.current;
           if (!scrollContainer) return;
-
           const audioEl = useAudioStore.getState().audioElement;
           const currentTime = audioEl?.currentTime ?? useAudioStore.getState().currentTime;
-          const { zoom, rowHeights, defaultRowHeight } = useTimelineStore.getState();
-
-          scrollContainer.scrollLeft = centerTimeScrollLeft(currentTime, zoom, scrollContainer.clientWidth);
-
-          let activeLineIndex = -1;
-          for (let i = 0; i < lines.length; i++) {
-            const timing = effectiveBounds(lines[i]);
-            if (timing && currentTime >= timing.begin && currentTime < timing.end) {
-              activeLineIndex = i;
-              break;
-            }
-          }
-
-          if (activeLineIndex >= 0) {
-            const line = lines[activeLineIndex];
-            const collapsedInstances = useTimelineStore.getState().collapsedInstances;
-            const layout = computeRowLayout({
-              lines,
-              rowHeights,
-              defaultRowHeight,
-              collapsedInstances,
-              waveformHeight: WAVEFORM_HEIGHT,
-              groupHeaderHeight: GROUP_HEADER_HEIGHT,
-            });
-            const instanceKey = isLinked(line) ? `${line.groupId}:${line.instanceIdx}` : null;
-            const pos =
-              instanceKey && collapsedInstances[instanceKey]
-                ? layout.headerTops.get(instanceKey)
-                : layout.lineTops.get(line.id);
-
-            if (pos) {
-              const viewportHeight = scrollContainer.clientHeight;
-              const rowCenter = pos.top + pos.height / 2;
-              const targetTop = Math.max(
-                0,
-                Math.min(scrollContainer.scrollHeight - viewportHeight, rowCenter - viewportHeight / 2),
-              );
-              scrollContainer.scrollTo({ top: targetTop, behavior: "instant" });
-            }
-          }
+          revealTimeInTimeline(scrollContainer, lines, currentTime);
           break;
         }
         case "timeline.selectWordAtPlayhead": {

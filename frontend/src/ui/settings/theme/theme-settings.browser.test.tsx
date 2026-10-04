@@ -12,7 +12,7 @@ describe("ThemeSettings", () => {
     useThemeStore.setState({ activeThemeId: DEFAULT_PRESET_ID, customThemes: [] });
   });
 
-  it("renders the preset gallery with a Composer and a classic preset", async () => {
+  it("renders the preset gallery with an autolyrics and a classic preset", async () => {
     const screen = await render(<ThemeSettings />);
     await expect.element(screen.getByRole("button", { name: /Default/ })).toBeInTheDocument();
     await expect.element(screen.getByRole("button", { name: /Dracula/ })).toBeInTheDocument();
