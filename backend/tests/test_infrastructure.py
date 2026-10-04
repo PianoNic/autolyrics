@@ -210,3 +210,17 @@ class TestLateLineStart:
         line = self._line(35.5)
         aligner._pull_late_start(line, 0.0, previous_end=0.0)
         assert line.words[0].begin == 35.5
+
+    def test_a_line_running_into_the_next_is_squeezed_into_its_span(self):
+        from autolyrics.domain.lyrics import Line, Word
+        from autolyrics.infrastructure.ml.mms_lyrics_aligner import MmsLyricsAligner
+
+        aligner = object.__new__(MmsLyricsAligner)
+        echo = Line(begin=35.27, end=37.37, words=[
+            Word(text="Echo ", begin=35.27, end=37.6), Word(text="the ", begin=37.6, end=37.84),
+            Word(text="sound", begin=37.84, end=38.36)])
+        after = Line(begin=37.6, end=39.39, words=[Word(text="Can't", begin=37.46, end=37.64)])
+        aligner._fit_overruns([echo, after], [0.0, 0.0])
+        assert echo.words[0].begin == 35.27
+        assert echo.words[-1].end == 37.37
+        assert echo.words[0].end < echo.words[1].begin + 1e-9 < echo.words[2].begin

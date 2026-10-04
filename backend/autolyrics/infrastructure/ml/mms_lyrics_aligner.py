@@ -217,10 +217,11 @@ class MmsLyricsAligner(ILyricsAligner):
                     self._time_from_source(line, trusted, previous_end, run.duration)
                     source_timed += 1
                 else:
-                    self._pull_late_start(line, offset, previous_end)
+                    self._pull_late_start(line, min(offset, line_offset), previous_end)
                 ends = [w.end for w in line.words if w.timed]
                 if ends:
                     previous_end = max(previous_end, max(ends))
+            self._fit_overruns(lines, offsets or [0.0] * len(lines))
 
         for line in lines:
             self._align_background(line, run, line_offset)
@@ -264,14 +265,40 @@ class MmsLyricsAligner(ILyricsAligner):
     def _pull_late_start(self, line: Line, offset: float, previous_end: float) -> None:
         """Line-synced sources mark where the first word's sound begins; CTC tends to miss the
         soft onset of a held first word ("Eee-cho") and start it late. Stretch the first word
-        back to the source's start, never into the previous line."""
+        back to the source's start, never into the previous line. The caller passes the earlier of
+        the local and song-wide offsets: a late neighbour drags the local one late too."""
         timed = [w for w in line.words if w.timed]
         if not timed or line.begin is None:
             return
         first = timed[0]
-        source_start = max(line.begin + offset, previous_end)
+        source_start = line.begin + offset
+        # The previous line's words are not tidied yet, so its end may still overhang a little.
+        if source_start < previous_end - self.LATE_START:
+            source_start = previous_end
         if first.begin - source_start > self.LATE_START:
             first.begin = round(source_start, 3)
+
+    def _fit_overruns(self, lines: list[Line], offsets: list[float]) -> None:
+        """A line whose words run past both its source end and the start of the next line has
+        latched its last words onto an echo or a held note; squeeze it back into its span,
+        keeping the proportions the aligner heard."""
+        for i, (line, offset) in enumerate(zip(lines, offsets, strict=True)):
+            timed = [w for w in line.words if w.timed]
+            if not timed or line.end is None or i + 1 >= len(lines):
+                continue
+            following = [w for w in lines[i + 1].words if w.timed]
+            if not following:
+                continue
+            start, end = timed[0].begin, timed[-1].end
+            limit = min(line.end + offset, following[0].begin)
+            if end - (line.end + offset) <= self.LATE_START or end <= following[0].begin:
+                continue
+            if limit - start < 0.2 * len(timed):
+                continue  # no room to squeeze into: leave it to the review
+            scale = (limit - start) / (end - start)
+            for w in timed:
+                w.begin = round(start + (w.begin - start) * scale, 3)
+                w.end = round(start + (w.end - start) * scale, 3)
 
     def _time_from_source(self, line: Line, offset: float, previous_end: float,
                           duration: float) -> None:
