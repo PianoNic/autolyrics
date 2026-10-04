@@ -100,3 +100,42 @@ class TestVocalAnalyzer:
         assert events.voiced_until(2.0, limit=9.0) == 6.0
         assert events.voiced_until(2.0, limit=4.0) == 4.0
         assert events.voiced_until(7.0, limit=9.0) == 7.0
+
+
+class TestRepeatMemory:
+    @staticmethod
+    def _line(start: float, confidence: float, gaps=(0.0, 0.5, 1.0)):
+        from autolyrics.domain.lyrics import Line, Word
+
+        return Line(words=[Word(text=t, begin=start + g, end=start + g + 0.4,
+                                confidence=confidence)
+                           for t, g in zip(("Hands ", "go ", "higher"), gaps, strict=True)])
+
+    def test_a_doubtful_repeat_borrows_the_trusted_rhythm(self):
+        from autolyrics.infrastructure.ml.singing.repeat_memory import RepeatMemory
+
+        lines = [self._line(10.0, 0.99), self._line(30.0, 0.99),
+                 self._line(50.0, 0.5, gaps=(0.0, 1.7, 1.9))]
+        lines[2].words[0].confidence = 0.98  # its surest word anchors it
+        changed = RepeatMemory().apply(lines)
+        assert changed == {(2, 0), (2, 1), (2, 2)}
+        assert [w.begin for w in lines[2].words] == [50.0, 50.5, 51.0]
+        assert "from-repeat" in lines[2].words[1].flags
+
+    def test_repeats_that_disagree_lend_nothing(self):
+        from autolyrics.infrastructure.ml.singing.repeat_memory import RepeatMemory
+
+        lines = [self._line(10.0, 0.99), self._line(30.0, 0.99, gaps=(0.0, 1.0, 2.0)),
+                 self._line(50.0, 0.5)]
+        assert RepeatMemory().apply(lines) == set()
+
+
+class TestRoformerStemNames:
+    def test_the_last_bracket_names_the_stem(self):
+        from pathlib import Path
+
+        from autolyrics.infrastructure.ml.roformer_separator import RoformerVocalSeparator
+
+        files = [Path("1-vocals_(Instrumental)_karaoke.wav"), Path("1-vocals_(Vocals)_karaoke.wav")]
+        assert RoformerVocalSeparator._stem(files, "vocals").name == "1-vocals_(Vocals)_karaoke.wav"
+        assert RoformerVocalSeparator._stem(files, "instrumental") == files[0]

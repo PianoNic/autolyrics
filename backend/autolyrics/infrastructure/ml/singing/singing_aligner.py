@@ -16,6 +16,7 @@ from autolyrics.infrastructure.media.ffmpeg import Ffmpeg
 from autolyrics.infrastructure.ml.japanese_text import WordSegmenter
 from autolyrics.infrastructure.ml.singing.acoustic import Emissions, IAcousticModel
 from autolyrics.infrastructure.ml.singing.ctc_solver import GlobalCtcSolver, SolverLine, WordSpan
+from autolyrics.infrastructure.ml.singing.repeat_memory import RepeatMemory
 from autolyrics.infrastructure.ml.singing.syllables import SyllableTimer
 from autolyrics.infrastructure.ml.singing.timing_judge import TimingJudge, WordEvidence
 from autolyrics.infrastructure.ml.singing.vocal_analyzer import VocalAnalyzer, VocalEvents
@@ -72,7 +73,9 @@ class SingingLyricsAligner(ILyricsAligner):
     def __init__(self, ffmpeg: Ffmpeg, models: AcousticModels, solver: GlobalCtcSolver,
                  analyzer: VocalAnalyzer, repairer: TimingRepairer, offsets: OffsetEstimator,
                  languages: LanguageGuesser, segmenter: WordSegmenter,
-                 syllables: SyllableTimer, judge: TimingJudge | None = None):
+                 syllables: SyllableTimer, judge: TimingJudge | None = None,
+                 repeats: RepeatMemory | None = None):
+        self._repeats = repeats
         self._syllables = syllables
         self._timing_judge = judge or TimingJudge()
         self.last_evidence: dict = {}
@@ -111,6 +114,9 @@ class SingingLyricsAligner(ILyricsAligner):
             progress.update(0.5, "judging every word")
             events = self._analyzer.analyze(stems.lead)
             self._judge(lines, model, solver_lines, placed, heard, offset, events)
+            borrowed = self._repeats.apply(lines) if self._repeats is not None else set()
+            for key in borrowed:
+                placed.pop(key, None)  # its heard syllables no longer match its new times
             progress.update(0.65, "following the voice")
             self._follow_voice(lines, events)
             syllables = self._split_syllables(lines, placed, model, language, em.frame_seconds)
@@ -123,7 +129,7 @@ class SingingLyricsAligner(ILyricsAligner):
                 line.begin = line.end = None
             progress.update(1.0, "done")
             stats = self._stats(lyrics, model, language, line_synced, offset, segmented)
-            return {**stats, "syllable_words": syllables}
+            return {**stats, "syllable_words": syllables, "from_repeat": len(borrowed)}
 
     def measure_offset(self, lyrics: Lyrics, stems: VocalStems, workspace: Path) -> dict:
         probe = lyrics.model_copy(deep=True)

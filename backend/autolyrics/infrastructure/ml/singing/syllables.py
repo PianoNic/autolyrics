@@ -7,7 +7,14 @@ from autolyrics.infrastructure.ml.singing.lam_model import PHONES
 
 
 class Syllabifier:
-    """Written syllables by hyphenation patterns (pyphen): "beautiful" -> beau-ti-ful."""
+    """Written syllables, in two styles. `spoken` follows the sound the way Apple's syllable
+    lyrics do: one syllable per vowel group, the consonant before a vowel opening its syllable
+    ("slee-ping", "wan-ting", "cri-mi-nal"). `pieces` uses hyphenation patterns (pyphen), the
+    fallback when the spoken split does not match the sung vowels."""
+
+    VOWELS: ClassVar = set("aeiouyäöüàâéèêëîïôûùáíóú")
+    TOGETHER: ClassVar = ("sch", "ch", "sh", "th", "ph", "qu")
+    CODA: ClassVar = ("ng", "ck")
 
     DICTIONARIES: ClassVar = {"en": "en_US", "de": "de_DE", "fr": "fr_FR", "es": "es",
                               "it": "it_IT"}
@@ -15,13 +22,53 @@ class Syllabifier:
     def __init__(self):
         self._dictionaries: dict[str, object] = {}
 
+    def spoken(self, text: str) -> list[str]:
+        core = text.rstrip()
+        trailing = text[len(core):]
+        if len(core) < 3 or any(ch.isspace() for ch in core):
+            return [text]
+        lower = core.lower()
+        nuclei, i = [], 0
+        while i < len(lower):
+            if lower[i] in self.VOWELS and not (lower[i] == "y" and i + 1 < len(lower)
+                                                and lower[i + 1] in self.VOWELS):
+                start = i
+                while i < len(lower) and lower[i] in self.VOWELS:
+                    i += 1
+                nuclei.append((start, i))
+            else:
+                i += 1
+        if len(nuclei) < 2:
+            return [text]
+        cuts = []
+        for (_, prev_end), (next_start, _) in pairwise(nuclei):
+            consonants = next_start - prev_end
+            cut = next_start - 1 if consonants >= 1 else next_start
+            # "ng" and "ck" close a syllable ("sing-ing", "kick-ing").
+            if lower[prev_end:next_start] in self.CODA:
+                cuts.append(next_start)
+                continue
+            # Keep letter pairs that make one sound together ("ch", "sch").
+            for pair in self.TOGETHER:
+                if consonants >= len(pair) and lower[next_start - len(pair):next_start] == pair:
+                    cut = next_start - len(pair)
+                    break
+            cuts.append(max(cut, prev_end))
+        bounds = [0, *cuts, len(core)]
+        pieces = [core[a:b] for a, b in pairwise(bounds) if b > a]
+        if len(pieces) != len(nuclei) or not all(any(c.isalpha() for c in piece)
+                                                 for piece in pieces):
+            return [text]
+        pieces[-1] += trailing
+        return pieces
+
     def pieces(self, text: str, language: str) -> list[str]:
         """The word's text split into syllables; the last piece keeps the trailing space."""
         core = text.rstrip()
         trailing = text[len(core):]
         dictionary = self._dictionary(language)
-        if dictionary is None or len(core) < 4:
-            return [text]
+        if dictionary is None or len(core) < 4 or any(ch.isspace() for ch in core):
+            return [text]  # a span holding several words keeps the source's grouping
         cuts = [p for p in dictionary.positions(core) if 0 < p < len(core)]
         if not cuts:
             return [text]
@@ -59,11 +106,18 @@ class SyllableTimer:
 
     def split(self, word: Word, span: WordSpan, tokens: list[int], language: str,
               phonemes: bool, frame_seconds: float) -> list[Word]:
-        pieces = self._syllabifier.pieces(word.text, language)
-        if len(pieces) < 2 or len(tokens) != len(span.tokens) or not word.timed:
+        if len(tokens) != len(span.tokens) or not word.timed:
             return [word]
-        starts = (self._phoneme_starts(tokens, len(pieces)) if phonemes
-                  else self._letter_starts(pieces, len(tokens)))
+        pieces, starts = [word.text], None
+        for candidate in (self._syllabifier.spoken(word.text),
+                          self._syllabifier.pieces(word.text, language)):
+            if len(candidate) < 2:
+                continue
+            starts = (self._phoneme_starts(tokens, len(candidate)) if phonemes
+                      else self._letter_starts(candidate, len(tokens)))
+            if starts is not None:
+                pieces = candidate
+                break
         if starts is None:
             return [word]
         times = [word.begin] + [span.tokens[k].begin * frame_seconds for k in starts[1:]]

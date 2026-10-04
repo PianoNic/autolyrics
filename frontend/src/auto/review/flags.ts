@@ -14,6 +14,7 @@ const FLAG_LABELS: Record<string, string> = {
   "llm-insert": "Line added from other lyrics sources",
   "llm-edit": "Text changed by DeepSeek",
   interpolated: "Time estimated from the neighbouring words",
+  "from-repeat": "Timed like the other repeats of this line",
   "too-long": "Held unusually long",
   "too-short": "Unusually short",
   overlap: "Overlaps the previous word",

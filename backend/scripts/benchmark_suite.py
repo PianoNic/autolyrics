@@ -79,7 +79,7 @@ class SongBenchmark:
         return {**self.score(lyrics), "separate_s": round(separated, 1),
                 "align_s": round(aligned, 1)}
 
-    def syllables(self, aligned: Lyrics) -> dict:
+    def syllables(self, aligned: Lyrics, offset: float) -> dict:
         """Start errors of the inner syllables of words both the truth and the output split
         into the same number of pieces; and how many split words the output split at all."""
         errors, truth_split, matched = [], 0, 0
@@ -93,7 +93,8 @@ class SongBenchmark:
                 truth_split += 1
                 if len(ag) == len(tg) and all(p.timed for p in tg + ag):
                     matched += 1
-                    errors += [abs(a.begin - t.begin) for t, a in zip(tg[1:], ag[1:], strict=True)]
+                    errors += [abs(a.begin - t.begin - offset)
+                               for t, a in zip(tg[1:], ag[1:], strict=True)]
         return {"split_words": truth_split, "split_matched": matched,
                 "syllable_aae": round(float(np.mean(errors)), 3) if errors else None}
 
@@ -108,7 +109,7 @@ class SongBenchmark:
         return groups
 
     def score(self, aligned: Lyrics) -> dict:
-        syllables = self.syllables(aligned)
+        original = aligned
         truth, aligned = self.merged(self.truth), self.merged(aligned)
         pairs = [(t, a, i) for i, (t_line, a_line) in enumerate(
                      zip(truth.lines, aligned.lines, strict=True))
@@ -117,6 +118,7 @@ class SongBenchmark:
         if diffs.size == 0:
             return {"words": 0}
         offset = float(np.median(diffs))
+        syllables = self.syllables(original, offset)
         errors = np.abs(diffs - offset)
         by_line: dict[int, list[float]] = {}
         for t, a, i in pairs:

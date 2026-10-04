@@ -33,7 +33,9 @@ def collect(container: Container, folder: Path) -> tuple[np.ndarray, np.ndarray]
     diffs, rows = [], []
     content = [i for i, line in enumerate(truth.lines) if line.words]
     for (li, wi), ev in evidence.items():
-        t_word = truth.lines[content[li]].words[wi] if li < len(content) else None
+        t_words = truth.lines[content[li]].words if li < len(content) else []
+        # Space-less scripts are re-segmented by the aligner: their words cannot be paired.
+        t_word = t_words[wi] if wi < len(t_words) and len(t_words) == len(original[content[li]]) else None
         a_begin = _begin_of(lyrics.lines[content[li]], original[content[li]], wi)
         if t_word is None or not t_word.timed or a_begin is None:
             continue

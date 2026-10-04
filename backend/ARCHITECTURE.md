@@ -34,6 +34,25 @@ Handlers record them on the job (`RecordJobEventHandler`) and fan them out to op
 The job repository is an identity map: one `Job` instance per id, so the stages and the
 notification handlers update the same object.
 
+## Timing engine (pipeline v2)
+
+`infrastructure/ml/singing/` holds the engine; `AUTOLYRICS_SEPARATOR=demucs` and
+`AUTOLYRICS_ALIGNER=mms` switch back to the previous one.
+
+| Piece | Role |
+|---|---|
+| `RoformerVocalSeparator` (`ml/roformer_separator.py`) | `VocalStems`: all vocals, dry lead, backing |
+| `IAcousticModel` → `SingingPhonemeModel`, `MmsCharacterModel` | token probabilities per frame; words → tokens |
+| `GlobalCtcSolver` | one Viterbi over the song; soft line pull and window; optional gaps |
+| `VocalAnalyzer` → `VocalEvents` | SwiftF0 voicing, loudness, pitch, notes |
+| `TimingJudge` + `WordEvidence` | calibrated "timing is right" probability per word |
+| `RepeatMemory` | doubtful chorus repeats borrow the rhythm of trusted ones |
+| `SyllableTimer` + `Syllabifier` | words split into syllables timed from their vowels |
+| `SingingLyricsAligner` | orchestrates the above behind `ILyricsAligner` |
+
+Benchmarking lives in `scripts/`: `collect_benchmark.py` (songs with hand-made syllable timing),
+`separate_benchmark.py`, `benchmark_suite.py` and `fit_judge.py`.
+
 ## HTTP API
 
 | Method | Path | Message |

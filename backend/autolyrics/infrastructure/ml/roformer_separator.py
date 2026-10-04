@@ -70,8 +70,18 @@ class RoformerVocalSeparator(IVocalSeparator):
         files = [out / Path(f).name for f in separator.separate(str(source))]
         del separator
         self._free_gpu()
-        wanted = self._stem(files, keep)
-        return wanted if other is None else (wanted, self._stem(files, other))
+        # Each pass appends its model name to the file name; short names keep the next pass
+        # under Windows' 260-character path limit.
+        wanted = self._short(self._stem(files, keep), out, keep)
+        if other is None:
+            return wanted
+        return wanted, self._short(self._stem(files, other), out, other)
+
+    @staticmethod
+    def _short(path: Path, out: Path, name: str) -> Path:
+        target = out / f"{len(list(out.glob('*.wav')))}-{name}.wav"
+        path.replace(target)
+        return target
 
     @staticmethod
     def _stem(files: list[Path], name: str) -> Path:

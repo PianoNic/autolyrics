@@ -30,9 +30,11 @@ class TimingJudge:
     (scripts/fit_judge.py) with "right" meaning a start within 0.3 s of the hand-made timing."""
 
     # Fitted by scripts/fit_judge.py; see its output for the data behind them.
-    WEIGHTS: ClassVar = [0.55, -2.4, -1.6, 0.6, -0.5]
-    BIAS = 2.6
-    UNSURE = 0.6  # below this probability a word is flagged for review
+    # 18 songs, 7,400 words, 2% of them more than 0.3 s off. At 0.92 about 5% of words are
+    # flagged and they hold about 60% of the wrong ones.
+    WEIGHTS: ClassVar = [0.644, -1.277, -3.124, -0.022, -0.597]
+    BIAS = 6.497
+    UNSURE = 0.92  # below this probability a word is flagged for review
 
     def __init__(self, weights: list[float] | None = None, bias: float | None = None):
         self._weights = weights or self.WEIGHTS

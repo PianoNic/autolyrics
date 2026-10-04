@@ -85,6 +85,7 @@ from autolyrics.infrastructure.ml.singing.ctc_solver import GlobalCtcSolver
 from autolyrics.infrastructure.ml.singing.lam_model import Phonemizer, SingingPhonemeModel
 from autolyrics.infrastructure.ml.singing.mms_acoustic import MmsCharacterModel
 from autolyrics.infrastructure.ml.singing.model_files import ModelFiles
+from autolyrics.infrastructure.ml.singing.repeat_memory import RepeatMemory
 from autolyrics.infrastructure.ml.singing.singing_aligner import (
     AcousticModels,
     SingingLyricsAligner,
@@ -235,7 +236,7 @@ class Container:
         return SingingLyricsAligner(self.ffmpeg, AcousticModels(singing, mms), GlobalCtcSolver(),
                                     VocalAnalyzer(self.ffmpeg), self.repairer, self.offsets,
                                     self.languages, WordSegmenter(self.japanese),
-                                    SyllableTimer(Syllabifier()))
+                                    SyllableTimer(Syllabifier()), repeats=RepeatMemory())
 
     async def aclose(self) -> None:
         await self.queue.stop()
