@@ -163,7 +163,8 @@ class Container:
         self.handle(TranscribeLyricsCommand, TranscribeLyricsHandler,
                     lambda: TranscribeLyricsHandler(self.separator, self.transcriber, self.tidier))
         self.handle(PolishLyricsCommand, PolishLyricsHandler,
-                    lambda: PolishLyricsHandler(self.llm, self.comparer, self.applier, repo))
+                    lambda: PolishLyricsHandler(self.llm, self.comparer, self.applier, repo,
+                                                self.separator, self.transcriber))
         self.handle(AlignLyricsCommand, AlignLyricsHandler,
                     lambda: AlignLyricsHandler(self.separator, self.aligner, self.transcriber,
                                                LineAnchorer()))

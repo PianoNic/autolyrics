@@ -1,8 +1,10 @@
+import asyncio
 import json
 from dataclasses import dataclass
 
 from mediatorx import UNIT, ICommand, ICommandHandler, Unit
 
+from autolyrics.application.interfaces.audio import ITranscriber, IVocalSeparator
 from autolyrics.application.interfaces.jobs import IJobRepository
 from autolyrics.application.interfaces.llm import ILlmClient
 from autolyrics.application.pipeline.context import PipelineContext
@@ -22,12 +24,32 @@ class PolishLyricsHandler(ICommandHandler[PolishLyricsCommand, Unit]):
     disagree. Runs before alignment, so corrected text is what gets aligned. Optional: without a
     key, or when the LLM is unavailable, the lyrics stay as found."""
 
+    WITNESS = "Whisper (machine transcription)"
+
     def __init__(self, llm: ILlmClient, comparer: SourceComparer, applier: DecisionApplier,
-                 repository: IJobRepository):
+                 repository: IJobRepository, separator: IVocalSeparator,
+                 transcriber: ITranscriber):
+        self._separator = separator
+        self._transcriber = transcriber
         self._llm = llm
         self._comparer = comparer
         self._applier = applier
         self._repository = repository
+
+    @staticmethod
+    def _needs_witness(ctx: PipelineContext) -> bool:
+        chosen = ctx.chosen
+        return (ctx.audio is not None and chosen is not None
+                and chosen.source not in ("user", "file") and "transcription" not in ctx.report)
+
+    def _hear(self, ctx: PipelineContext):
+        try:
+            vocals = self._separator.separate(ctx.audio, ctx.workspace)
+            return self._transcriber.transcribe(vocals, ctx.workspace, ctx.lyrics.metadata.language)
+        except Exception:  # noqa: BLE001 - a second opinion only; the clean-up works without it
+            return None
+        finally:
+            self._transcriber.release()
 
     async def handle(self, command: PolishLyricsCommand) -> Unit:
         ctx = command.context
@@ -43,6 +65,14 @@ class PolishLyricsHandler(ICommandHandler[PolishLyricsCommand, Unit]):
         await ctx.reporter.running(Stage.POLISH, "Cross-checking sources and asking DeepSeek")
         others = [(c.label, c.lyrics) for c in ctx.candidates[1:] if c.lyrics is not None]
         versions = self._comparer.group(ctx.lyrics, others)
+        if not versions and self._needs_witness(ctx):
+            # Every source has the same text, so there is nothing to compare: what the recording
+            # actually contains is the only second opinion left.
+            await ctx.reporter.running(Stage.POLISH, "All sources agree; checking them against "
+                                                     "what Whisper hears")
+            witness = await asyncio.to_thread(self._hear, ctx)
+            if witness is not None:
+                versions = [self._comparer.witness(self.WITNESS, witness)]
         decisions = self._comparer.decisions(ctx.lyrics, versions)
         chosen = ctx.report.get("chosen") or {}
         origin = f"{chosen.get('label', 'a lyrics source')} ({chosen.get('sync', 'unknown')} sync)"

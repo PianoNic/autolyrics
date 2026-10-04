@@ -16,6 +16,11 @@ Rules:
   sources deliberately write what is sung. Never move words between the main line and the
   background vocals in parentheses.
 - Many sources copy one another, so agreement counts for less than a clearly better word.
+- "Whisper (machine transcription)" is not a lyrics source: it is what a speech recogniser heard
+  in this recording, often misspelled or misheard. Never prefer its spelling or wording over a
+  lyrics source. Use it only as evidence that something is sung: accept a variant from it only
+  when it adds a sung word the lyrics lack (e.g. a leading "Ja,"), and a missing line only when
+  it is clearly a sung line (a name, an intro shout) that every lyrics source dropped.
 - For each missing-line candidate, accept it only if it is clearly a real sung line that the chosen
   version dropped (more supporting sources make that more likely). Never accept section labels.
 - List lines of the current lyrics that are not sung lyrics at all: credits ("Lyrics by", "Produced

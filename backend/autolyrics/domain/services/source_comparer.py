@@ -88,6 +88,11 @@ class SourceComparer:
             versions.append(SourceVersion(label, texts[key]))
         return versions
 
+    def witness(self, label: str, lyrics: Lyrics) -> SourceVersion:
+        """A version that only testifies what is sung (a transcription): its lines need not line
+        up with the chosen ones, so it skips the structure check."""
+        return SourceVersion(label, self.lines_of(lyrics))
+
     def structure_match(self, a: list[str], b: list[str]) -> float:
         """Share of lines in `a` with a similar line in `b`: high for another transcription of
         the same song, low for a source that breaks lines differently or is another song."""

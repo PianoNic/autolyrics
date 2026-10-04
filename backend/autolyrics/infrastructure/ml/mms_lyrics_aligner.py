@@ -78,6 +78,7 @@ class MmsLyricsAligner(ILyricsAligner):
     ORDER_SLACK = 1.5
     UNSURE_LINE = 0.2  # mean word confidence below which a line's alignment is a guess
     SOURCE_TRUST = 1.0  # seconds a guess may stray from the source's line time
+    LATE_START = 0.4  # seconds a line may start after the source says it does
 
     def __init__(self, ffmpeg: Ffmpeg, repairer: TimingRepairer, offsets: OffsetEstimator,
                  languages: LanguageGuesser, japanese: JapaneseText, segmenter: WordSegmenter):
@@ -215,6 +216,8 @@ class MmsLyricsAligner(ILyricsAligner):
                     # aligner has latched onto a repeat, an echo or words it cannot read.
                     self._time_from_source(line, trusted, previous_end, run.duration)
                     source_timed += 1
+                else:
+                    self._pull_late_start(line, offset, previous_end)
                 ends = [w.end for w in line.words if w.timed]
                 if ends:
                     previous_end = max(previous_end, max(ends))
@@ -257,6 +260,18 @@ class MmsLyricsAligner(ILyricsAligner):
                 and abs(found - (line.begin + song)) > self.SOURCE_TRUST):
             return song
         return None
+
+    def _pull_late_start(self, line: Line, offset: float, previous_end: float) -> None:
+        """Line-synced sources mark where the first word's sound begins; CTC tends to miss the
+        soft onset of a held first word ("Eee-cho") and start it late. Stretch the first word
+        back to the source's start, never into the previous line."""
+        timed = [w for w in line.words if w.timed]
+        if not timed or line.begin is None:
+            return
+        first = timed[0]
+        source_start = max(line.begin + offset, previous_end)
+        if first.begin - source_start > self.LATE_START:
+            first.begin = round(source_start, 3)
 
     def _time_from_source(self, line: Line, offset: float, previous_end: float,
                           duration: float) -> None:

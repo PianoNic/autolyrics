@@ -180,3 +180,33 @@ class TestRepositoryAcrossProcesses:
         later = time.time() + 5
         os.utime(path, (later, later))
         assert server.get("song").status == JobStatus.DONE
+
+
+class TestLateLineStart:
+    @staticmethod
+    def _line(first_begin: float):
+        from autolyrics.domain.lyrics import Line, Word
+
+        return Line(begin=35.27, end=37.37, words=[
+            Word(text="Echo ", begin=first_begin, end=37.6, confidence=0.5),
+            Word(text="the ", begin=37.6, end=37.84, confidence=0.5)])
+
+    def test_a_first_word_heard_late_starts_where_the_source_says(self):
+        from autolyrics.infrastructure.ml.mms_lyrics_aligner import MmsLyricsAligner
+
+        aligner = object.__new__(MmsLyricsAligner)
+        line = self._line(36.12)
+        aligner._pull_late_start(line, 0.0, previous_end=35.13)
+        assert line.words[0].begin == 35.27
+        assert line.words[0].end == 37.6
+
+    def test_never_into_the_previous_line_and_small_gaps_stay(self):
+        from autolyrics.infrastructure.ml.mms_lyrics_aligner import MmsLyricsAligner
+
+        aligner = object.__new__(MmsLyricsAligner)
+        line = self._line(36.12)
+        aligner._pull_late_start(line, 0.0, previous_end=35.9)
+        assert line.words[0].begin == 36.12  # only 0.22 s after the previous line: stays
+        line = self._line(35.5)
+        aligner._pull_late_start(line, 0.0, previous_end=0.0)
+        assert line.words[0].begin == 35.5
