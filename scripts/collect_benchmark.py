@@ -15,11 +15,14 @@ collected are skipped.
 
 import asyncio
 import json
+import os
 import random
 import re
 import sys
+import time
 import unicodedata
 from pathlib import Path
+from typing import ClassVar
 
 import httpx
 
@@ -59,6 +62,56 @@ SONGS = [
 
 MAX_DRIFT = 2.0  # seconds the upload may differ from the lyrics' length
 YOUTUBE_RESULTS = 6
+
+
+class PoliteTransport(httpx.AsyncBaseTransport):
+    """Every request of the collector goes through here: a minimum gap per host so free
+    community services are not hammered, and retries with backoff when a host pushes back
+    (429, 5xx, dropped connections), honouring Retry-After. Thousands of songs are collected,
+    so this matters more than speed."""
+
+    GAPS: ClassVar = {"lyrics-api.binimum.org": 1.0, "lrc.red": 1.0, "www.youtube.com": 2.0,
+            "app.argonfetch.dev": 1.0}
+    DEFAULT_GAP = 0.5
+    RETRIES = 5
+
+    def __init__(self):
+        self._inner = httpx.AsyncHTTPTransport(retries=0)
+        self._next: dict[str, float] = {}
+        self._lock = asyncio.Lock()
+        self.throttled = 0
+
+    async def _wait_turn(self, host: str) -> None:
+        async with self._lock:
+            now = asyncio.get_running_loop().time()
+            at = max(now, self._next.get(host, 0.0))
+            self._next[host] = at + self.GAPS.get(host, self.DEFAULT_GAP)
+        if at > now:
+            await asyncio.sleep(at - now)
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        delay = 5.0
+        for attempt in range(self.RETRIES + 1):
+            await self._wait_turn(request.url.host)
+            try:
+                response = await self._inner.handle_async_request(request)
+            except (httpx.ConnectError, httpx.ReadError, httpx.RemoteProtocolError):
+                if attempt == self.RETRIES:
+                    raise
+            else:
+                if response.status_code not in (429, 500, 502, 503, 504) or attempt == self.RETRIES:
+                    return response
+                self.throttled += response.status_code == 429
+                retry_after = response.headers.get("retry-after", "")
+                await response.aclose()
+                if retry_after.isdigit():
+                    delay = max(delay, float(retry_after))
+            await asyncio.sleep(delay)
+            delay = min(delay * 2, 300.0)
+        raise RuntimeError("unreachable")
+
+    async def aclose(self) -> None:
+        await self._inner.aclose()
 
 
 class YouTubeSearch:
@@ -111,10 +164,18 @@ class BenchmarkCollector:
             return "already collected"
         locks = self._root / ".locks"
         locks.mkdir(parents=True, exist_ok=True)
-        try:  # several collectors may run at once: one song, one collector
-            (locks / self.slug(artist, title)).open("x").close()
-        except FileExistsError:
+        lock = locks / self.slug(artist, title)
+        # Several collectors may run at once: one song, one collector. A lock older than ten
+        # minutes belongs to a collector that stopped, and the song is free again.
+        if lock.exists() and time.time() - lock.stat().st_mtime < 600:
             return "taken by another collector"
+        lock.write_text(str(os.getpid()))
+        try:
+            return await self._collect(artist, title, folder)
+        finally:
+            lock.unlink(missing_ok=True)
+
+    async def _collect(self, artist: str, title: str, folder: Path) -> str:
         candidates = await self._lyrics.search(LyricsQuery(track=title, artist=artist))
         timed = [c for c in candidates if c.declared_sync.is_word_level and c.duration]
         if not timed:
@@ -215,7 +276,8 @@ async def main() -> None:
     root = Path(args[0]) if args else Path("benchmarks")
     charts = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--charts=")), None)
     itunes = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--itunes=")), None)
-    async with httpx.AsyncClient(follow_redirects=True) as client:
+    transport = PoliteTransport()
+    async with httpx.AsyncClient(follow_redirects=True, transport=transport) as client:
         collector = BenchmarkCollector(root, client)
         if charts is None and itunes is None:
             await collector.run()

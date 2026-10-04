@@ -13,7 +13,7 @@ class BinimumProvider(HttpLyricsProvider):
     """binimum: a search across several sources; each result links to a TTML document."""
 
     name = "binimum"
-    URL = "https://lyrics-api.binimum.org/"
+    URL = "https://lrc.red/api/v1"  # binimum moved here; the old address redirects
     TIMINGS = ("syllable", "word", "line")
 
     async def _search(self, query: LyricsQuery) -> list[LyricsCandidate]:
