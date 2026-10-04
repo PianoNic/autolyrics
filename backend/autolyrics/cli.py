@@ -23,6 +23,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--album", help="album name, helps some lyrics sources")
     parser.add_argument("--lyrics", type=Path, help="use this TTML/LRC/QRC/TXT instead of searching")
     parser.add_argument("--job-dir", type=Path, help="where to put downloads and output")
+    parser.add_argument("--no-llm", action="store_true", help="skip the DeepSeek clean-up")
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args(argv)
 
@@ -32,7 +33,7 @@ def main(argv: list[str] | None = None) -> int:
                         format="    %(levelname)s %(name)s: %(message)s")
 
     job = Job(JobOptions(url=args.url, title=args.title, artist=args.artist, album=args.album,
-                         lyrics_file=args.lyrics), on_event=_print_event, job_dir=args.job_dir)
+                         lyrics_file=args.lyrics, skip_llm=args.no_llm), on_event=_print_event, job_dir=args.job_dir)
     try:
         asyncio.run(job.run())
     except PipelineError as error:

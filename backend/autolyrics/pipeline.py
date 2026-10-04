@@ -25,7 +25,7 @@ OFFSET_MIN = 0.12
 # ...and its words agree on the shift to within this (median absolute deviation, seconds).
 OFFSET_MAX_SPREAD = 0.15
 
-STAGES = ("resolve", "audio", "lyrics", "align", "polish", "export")
+STAGES = ("resolve", "audio", "lyrics", "polish", "align", "export")
 
 
 @dataclass
@@ -45,6 +45,7 @@ class JobOptions:
     album: str | None = None
     # Use a lyrics file instead of searching (the user's own TTML, LRC or text).
     lyrics_file: Path | None = None
+    skip_llm: bool = False
 
 
 class PipelineError(RuntimeError):
@@ -81,8 +82,10 @@ class Job:
             audio_path, duration = await self._audio(track, client)
             candidates = await self._lyrics(track, duration, client)
             lyrics = self._choose(candidates, duration)
+            if lyrics is not None:
+                lyrics = await self._polish(lyrics, candidates, client)
             lyrics = await self._align(lyrics, candidates, audio_path, duration)
-            lyrics = await self._polish(lyrics, candidates)
+            self._validate(lyrics, duration)
             self._export(lyrics)
             return lyrics
 
@@ -235,9 +238,66 @@ class Job:
         shift_lyrics(lyrics, check["offset"])
         return {**check, "applied": True, "reason": "consistent offset"}
 
-    async def _polish(self, lyrics: Lyrics, candidates) -> Lyrics:
-        self.emit("polish", "skipped", "LLM clean-up is not implemented yet")
+    async def _polish(self, lyrics: Lyrics, candidates: list[Candidate],
+                      client: httpx.AsyncClient) -> Lyrics:
+        from autolyrics.polish import (
+            apply_answer,
+            ask_llm,
+            build_prompt,
+            find_decisions,
+            group_sources,
+        )
+
+        if self.options.skip_llm:
+            self.emit("polish", "skipped", "LLM clean-up disabled")
+            return lyrics
+        if not settings.llm_api_key:
+            self.emit("polish", "skipped", "No LLM API key configured (AGENT_API_KEY)")
+            return lyrics
+        self.emit("polish", "running", "Cross-checking sources and asking DeepSeek")
+        others = [(c.label, c.lyrics) for c in candidates[1:] if c.lyrics is not None]
+        sources = group_sources(lyrics, others)
+        decisions = find_decisions(lyrics, sources)
+        chosen = self.report.get("chosen") or {}
+        origin = f"{chosen.get('label', 'a lyrics source')} ({chosen.get('sync', 'unknown')} sync)"
+        prompt = build_prompt(decisions, lyrics.metadata.title or "", lyrics.metadata.artists,
+                              origin)
+        (self.job_dir / "llm-prompt.txt").write_text(prompt, encoding="utf-8", newline="\n")
+        try:
+            answer = await ask_llm(prompt, client)
+        except (httpx.HTTPError, ValueError, RuntimeError, KeyError) as error:
+            # The clean-up is a refinement; without it the lyrics are still usable.
+            self.emit("polish", "failed", f"DeepSeek unavailable, lyrics left as found: {error}")
+            self.report["polish"] = {"error": str(error)}
+            return lyrics
+        (self.job_dir / "llm-answer.json").write_text(
+            json.dumps(answer, indent=2, ensure_ascii=False), encoding="utf-8", newline="\n")
+        before = lyrics.model_copy(deep=True)
+        try:
+            changes = apply_answer(lyrics, decisions, answer,
+                                   word_synced=lyrics.sync_type.is_word_level)
+        except ValueError as error:
+            self.emit("polish", "failed", f"Could not apply DeepSeek's answer: {error}")
+            self.report["polish"] = {"error": str(error)}
+            return before
+        self.report["polish"] = {
+            "sources_compared": [s.label for s in sources],
+            "variants": len(decisions.variants),
+            "insertion_candidates": len(decisions.insertions),
+            "changes": changes,
+        }
+        applied = [c for c in changes if c["kind"] not in ("note", "rejected", "language")]
+        notes = sum(c["kind"] == "note" for c in changes)
+        self.emit("polish", "done",
+                  f"{len(sources)} other versions compared, {len(applied)} changes, "
+                  f"{notes} notes for review", changes=changes)
         return lyrics
+
+    def _validate(self, lyrics: Lyrics, duration: float) -> None:
+        from autolyrics.validate import check_lyrics
+
+        problems = check_lyrics(lyrics, duration)
+        self.report["validation"] = problems
 
     def _export(self, lyrics: Lyrics) -> None:
         self.emit("export", "running", "Writing files")
