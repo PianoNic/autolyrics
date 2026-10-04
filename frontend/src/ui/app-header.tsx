@@ -10,7 +10,7 @@ interface AppHeaderProps {
 const AppHeader: React.FC<AppHeaderProps> = ({ onSettingsOpen, onHelpOpen }) => (
   <header className="flex items-center justify-between p-4 border-b select-none border-composer-border">
     <h1 className="text-xl font-semibold">
-      <img src="/logo.svg" alt="" className="inline-block size-6 mr-2 -mt-1" />
+      <img src="/logo.svg?v=2" alt="" className="inline-block size-6 mr-2 -mt-1" />
       autolyrics
     </h1>
     <div className="flex items-center gap-1">

@@ -12,7 +12,7 @@ const AboutSection: React.FC = () => (
     <div className="relative -mx-6 -mt-6">
       <div className="absolute inset-0 bg-gradient-to-b from-composer-accent/20 to-transparent pointer-events-none" />
       <div className="relative px-6 pt-7 pb-8 flex items-center gap-5">
-        <img src="/logo.svg" alt="" className="size-14 shrink-0" />
+        <img src="/logo.svg?v=2" alt="" className="size-14 shrink-0" />
         <div className="space-y-1">
           <h2 className="text-2xl font-semibold leading-tight tracking-tight">autolyrics</h2>
           <p className="text-sm text-composer-text-secondary">Word-synced lyrics from a song link.</p>

@@ -128,7 +128,7 @@ const StartPage: React.FC = () => {
       <div className="mx-auto flex max-w-2xl flex-col gap-8 px-4 py-12">
         <header className="flex flex-col gap-1">
           <h1 className="flex items-center gap-2.5 text-2xl font-semibold">
-            <img src="/logo.svg" alt="" className="size-8" />
+            <img src="/logo.svg?v=2" alt="" className="size-8" />
             autolyrics
           </h1>
           <p className="text-sm text-composer-text-muted">
