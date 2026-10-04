@@ -224,3 +224,78 @@ class TestLateLineStart:
         assert echo.words[0].begin == 35.27
         assert echo.words[-1].end == 37.37
         assert echo.words[0].end < echo.words[1].begin + 1e-9 < echo.words[2].begin
+
+
+class TestAppleMusicProvider:
+    UNSYNCED = ('<tt xmlns="http://www.w3.org/ns/ttml" '
+                'xmlns:itunes="http://music.apple.com/lyric-ttml-internal" itunes:timing="None">'
+                '<body><div><p>Yo, link up to the master, we live!</p>'
+                '<p>We here for a reason right now</p></div></body></tt>')
+
+    @staticmethod
+    def _transport(seen: list):
+        import httpx
+
+        def handle(request: httpx.Request) -> httpx.Response:
+            seen.append(request)
+            path = request.url.path
+            if path == "/us/browse":
+                return httpx.Response(200, text='<script src="/assets/index~abc123.js">')
+            if path == "/assets/index~abc123.js":
+                return httpx.Response(200, text='x="eyJ0eXAiOiJKV1Qi.eyJpc3Mi.c2lnbmF0dXJl"')
+            if path == "/v1/me/storefront":
+                return httpx.Response(200, json={"data": [{"id": "ch"}]})
+            if path == "/v1/catalog/ch/search":
+                return httpx.Response(200, json={"results": {"songs": {"data": [
+                    {"id": "680", "attributes": {"name": "NEW & LOUDER", "artistName": "Paper Skies",
+                                                 "durationInMillis": 152274, "hasLyrics": True,
+                                                 "hasTimeSyncedLyrics": False}}]}}})
+            if path == "/v1/catalog/ch/songs/680/lyrics":
+                return httpx.Response(200, json={"data": [
+                    {"attributes": {"ttml": TestAppleMusicProvider.UNSYNCED}}]})
+            return httpx.Response(404)
+        return httpx.MockTransport(handle)
+
+    def test_reads_the_account_lyrics_with_the_user_token(self, ttml):
+        import asyncio
+
+        import httpx
+
+        from autolyrics.domain.candidate import LyricsQuery
+        from autolyrics.domain.lyrics import SyncType
+        from autolyrics.infrastructure.providers.apple_music import AppleMusicProvider
+
+        seen: list = []
+
+        async def run():
+            async with httpx.AsyncClient(transport=self._transport(seen)) as client:
+                provider = AppleMusicProvider(client, "user-token")
+                return await provider.search(LyricsQuery(track="NEW & LOUDER",
+                                                         artist="Paper Skies"))
+
+        [candidate] = asyncio.run(run())
+        assert candidate.declared_sync == SyncType.UNSYNCED
+        assert candidate.duration == 152.274 and candidate.label == "Apple Music"
+        api = [r for r in seen if r.url.host == "amp-api.music.apple.com"]
+        assert all(r.headers["media-user-token"] == "user-token" for r in api)
+        assert all(r.headers["authorization"] == "Bearer eyJ0eXAiOiJKV1Qi.eyJpc3Mi.c2lnbmF0dXJl"
+                   for r in api)
+        lyrics = ttml.parse(candidate.content)
+        assert lyrics.lines[0].display == "Yo, link up to the master, we live!"
+
+    def test_stays_silent_without_a_user_token(self):
+        import asyncio
+
+        import httpx
+
+        from autolyrics.domain.candidate import LyricsQuery
+        from autolyrics.infrastructure.providers.apple_music import AppleMusicProvider
+
+        seen: list = []
+
+        async def run():
+            async with httpx.AsyncClient(transport=self._transport(seen)) as client:
+                return await AppleMusicProvider(client, None).search(
+                    LyricsQuery(track="x", artist="y"))
+
+        assert asyncio.run(run()) == [] and seen == []

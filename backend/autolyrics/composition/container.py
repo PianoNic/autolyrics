@@ -82,6 +82,7 @@ from autolyrics.infrastructure.ml.mms_lyrics_aligner import MmsLyricsAligner
 from autolyrics.infrastructure.ml.vocal_activity import VocalActivity
 from autolyrics.infrastructure.ml.whisper_transcriber import WhisperTranscriber
 from autolyrics.infrastructure.persistence.file_job_repository import FileJobRepository
+from autolyrics.infrastructure.providers.apple_music import AppleMusicProvider
 from autolyrics.infrastructure.providers.binimum import BinimumProvider
 from autolyrics.infrastructure.providers.boidu import BetterLyricsProvider, PortatoProvider
 from autolyrics.infrastructure.providers.lrclib import LrclibProvider
@@ -119,6 +120,7 @@ class Container:
         self.media = ArgonFetchMediaResolver(self.http, s.argonfetch_base_url, SongTitleParser(),
                                              RetryPolicy())
         self.providers = [
+            AppleMusicProvider(self.http, s.apple_music_user_token, s.apple_music_storefront),
             BetterLyricsProvider(self.http, s.boidu_api_key),
             BinimumProvider(self.http),
             PortatoProvider(self.http, s.boidu_api_key, self.qrc),

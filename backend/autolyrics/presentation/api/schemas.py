@@ -22,3 +22,4 @@ class HealthResponse(BaseModel):
     version: str
     llm: bool
     lyrics_api_key: bool
+    apple_music: bool = False

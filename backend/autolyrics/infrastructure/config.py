@@ -29,6 +29,14 @@ class Settings(BaseSettings):
     # needs one for everything else.
     boidu_api_key: str | None = Field(None, validation_alias="AUTOLYRICS_BOIDU_API_KEY")
 
+    # Apple Music lyrics with your own subscription: the `media-user-token` cookie of a logged-in
+    # music.apple.com tab. The storefront (country) is read from the account unless given.
+    apple_music_user_token: str | None = Field(
+        None, validation_alias=AliasChoices("APPLE_MUSIC_USER_TOKEN",
+                                            "AUTOLYRICS_APPLE_MUSIC_USER_TOKEN"))
+    apple_music_storefront: str | None = Field(
+        None, validation_alias="AUTOLYRICS_APPLE_MUSIC_STOREFRONT")
+
     # How far a lyrics source's length may differ from the audio before it counts as another
     # cut of the song (e.g. a music video versus the album version).
     duration_tolerance: float = Field(3.0, validation_alias="AUTOLYRICS_DURATION_TOLERANCE")
