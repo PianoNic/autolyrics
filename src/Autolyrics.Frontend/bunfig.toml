@@ -1,0 +1,4 @@
+[install]
+# Only install package versions published at least a week ago (supply-chain safety; was
+# pnpm's minimumReleaseAge). Lifecycle scripts of dependencies stay blocked, bun's default.
+minimumReleaseAge = 604800

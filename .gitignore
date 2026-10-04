@@ -10,8 +10,8 @@ __pycache__/
 .env
 
 # Job output, downloaded audio and model weights
-jobs/
-models/
+/jobs/
+/models/
 
 # Editors / OS
 .vscode/
@@ -20,5 +20,5 @@ models/
 Thumbs.db
 
 # Benchmark songs (audio and third-party lyrics)
-benchmarks/
-training/
+/benchmarks/
+/training/

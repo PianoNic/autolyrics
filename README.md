@@ -1,103 +1,93 @@
-# autolyrics
+<p align="center">
+  <img src="assets/logo.svg" width="140" alt="autolyrics Logo">
+</p>
 
-Paste a song link, get word-synced lyrics (TTML, LRC, SRT, QRC) without syncing by hand.
+<p align="center">
+  <strong>Paste a song link, get word- and syllable-synced lyrics. No syncing by hand.</strong>
+</p>
 
-Everything runs on your own machine. A local backend resolves the link with ArgonFetch, finds the
-lyrics in several sources, isolates the vocals, times every word against them and has DeepSeek pick
-between sources where they disagree. When no source has the song, Whisper transcribes it. The
-result opens in an editor on the timeline, where you can drag words, fix text and preview it;
-edits save back to the song automatically.
+<p align="center">
+  <a href="https://github.com/PianoNic/autolyrics"><img src="https://badgetrack.pianonic.ch/badge?tag=autolyrics&label=visits&color=818cf8&style=flat" alt="visits"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL--3.0-818cf8.svg" alt="AGPL-3.0"/></a>
+  <a href="docs/development.md"><img src="https://img.shields.io/badge/Development-Setup-818cf8.svg" alt="Development"/></a>
+  <img src="https://img.shields.io/badge/Python-3.12-818cf8.svg" alt="Python 3.12"/>
+  <img src="https://img.shields.io/badge/React-19-818cf8.svg" alt="React 19"/>
+</p>
 
-Based on [Composer](https://github.com/better-lyrics/composer) by Better Lyrics. Not affiliated
-with Better Lyrics or Spicy Lyrics.
+---
 
-## Getting started
+> **Heads up:** autolyrics is in early development and runs on your own machine. It is meant for
+> personal use: lyrics and audio come from third-party sources.
 
-Requirements: Python 3.12, Node 22+, ffmpeg on `PATH`, and an NVIDIA GPU for reasonable speed
-(CPU works, slowly).
+## What is autolyrics?
+
+Apple Music style lyrics, where every word and syllable lights up exactly when it is sung, are made
+by hand. autolyrics makes them from a song link: it finds the lyrics, isolates the vocals, listens
+to them with a model trained on singing and times every word and syllable. Where it is unsure, it
+says so, and the result opens on a timeline where you drag a word to fix it.
+
+Everything runs locally: a Python backend and a web editor based on
+[Composer](https://github.com/better-lyrics/composer). Measured on 18 songs with hand-made syllable
+timing, a word starts on average **0.066 s** from where a person put it, 98% within 300 ms.
+
+## Features
+
+- **Any song link**: Spotify, YouTube, SoundCloud and more, resolved through
+  [ArgonFetch](https://app.argonfetch.dev).
+- **Lyrics from several sources at once**: the first word-synced one that fits the recording ends
+  the search; Apple Music with your own subscription, and pasted lyrics, work too.
+- **Clean vocals**: RoFormer separation, lead split from backing vocals, reverb and echo removed.
+- **A singing aligner**: one global solve over the whole song with a phoneme model trained on
+  singing; line times from a source pull softly and live takes that drift are followed.
+- **Words that last as long as they are sung**: word ends follow the voice, and words split into
+  syllables where each one is heard.
+- **A timing judge**: every word gets a calibrated confidence; doubtful ones are flagged for review
+  instead of being patched.
+- **Ad-libs and choruses**: background vocals stay with their line, repeated choruses share their
+  rhythm.
+- **Many languages**: English, German, French, Spanish and Italian with the singing model;
+  Japanese, Korean, Chinese and Russian through MMS.
+- **DeepSeek clean-up**: where sources disagree on the text, DeepSeek picks; it never sees audio.
+- **Exports**: TTML (Apple / Better Lyrics), LRC, enhanced LRC, SRT and QRC.
+
+## Quick start
+
+Requirements: Python 3.12, Bun, ffmpeg and an NVIDIA GPU (CPU works, slowly).
 
 ```bash
-# 1. Backend
 python -m venv .venv
 .venv/Scripts/python -m pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu128
-.venv/Scripts/python -m pip install -e "backend[ml,dev]"
+.venv/Scripts/python -m pip install -e ".[ml,dev]"
 .venv/Scripts/python -m pip install --no-deps audio-separator==0.47.0 swift-f0
-
-# 2. Configuration
-cp .env.example .env          # then fill in AGENT_API_KEY (DeepSeek)
-
-# 3. Frontend
-cd frontend && npx -y pnpm@latest install && npx -y pnpm@latest build && cd ..
-
-# 4. Run
-.venv/Scripts/autolyrics serve        # open http://localhost:8765
+cp .env.example .env                       # fill in AGENT_API_KEY for DeepSeek
+cd src/Autolyrics.Frontend && bun install && bun run build && cd ../..
+.venv/Scripts/autolyrics serve
 ```
 
-(`.venv/Scripts/` on Windows, `.venv/bin/` elsewhere.) `audio-separator` goes in without its
-dependencies because it pins a torch release that would replace the CUDA build. The first song
-downloads the models into `models/`: three RoFormer separation models (~0.9 GB), the singing
-acoustic model (57 MB), MMS (~1.2 GB, for languages the singing model does not cover) and, only
-when needed, Whisper (~1.6 GB). Heavy work runs below normal priority with a few CPU threads, so
-the desktop stays responsive.
+Open <http://localhost:8765>.
 
-## How the timing works (pipeline v2)
+## Get started
 
-1. **Separation** (RoFormer, ~2.5 dB cleaner than Demucs): vocals from the mix, then lead from
-   backing vocals, then reverb and echo off the lead.
-2. **Listening**: a phoneme model trained on singing (LyricsAlignment-Multilingual, DALI) hears
-   the dry lead and all vocals; the two hearings are averaged.
-3. **One global solve**: a CTC Viterbi places every word of the song at once. A lyrics source's
-   line times are a soft pull and a soft window, never a hard box, after measuring the constant
-   offset between the source's master and this recording.
-4. **Following the voice** (SwiftF0 pitch and voicing): a held word lasts while it sounds.
-5. **Syllables**: words whose written syllables match their sung vowels are split, each syllable
-   starting at the consonant before its vowel.
-6. **Background vocals** are placed on the backing stem, near their main line.
-7. **The judge**: every word gets a calibrated probability that its timing is right (fitted on
-   the benchmark), and doubtful words are flagged in the editor instead of being patched.
-
-`backend/scripts/collect_benchmark.py` builds a benchmark from songs with hand-made syllable
-timing; `benchmark_suite.py` measures the pipeline on it and `fit_judge.py` calibrates the judge.
-
-Command line, without the web app:
-
-```bash
-.venv/Scripts/autolyrics run "https://open.spotify.com/track/…"   # files end up in jobs/<id>/output
-.venv/Scripts/autolyrics run <link> --transcribe                   # ignore lyrics sources, use Whisper
-```
-
-For frontend development: `autolyrics serve` plus `cd frontend && npx -y pnpm@latest dev`
-(Vite proxies `/api` to the backend).
-
-## Layout
-
-| Folder | What it is |
-|---|---|
-| `backend/` | Python package `autolyrics`: onion architecture with mediatorx, see `backend/ARCHITECTURE.md` |
-| `frontend/` | React app: start page, job progress, and the editor (forked from Composer) |
-| `PLAN.md` | Pipeline, status and the alignment benchmark |
-
-## Configuration (`.env`)
-
-| Variable | Purpose |
-|---|---|
-| `AGENT_API_KEY`, `AGENT_BASE_URL`, `AGENT_MODEL` | OpenAI-compatible endpoint for DeepSeek (text clean-up only; never receives audio) |
-| `AUTOLYRICS_BOIDU_API_KEY` | Optional: lets the Better Lyrics and QQ sources answer songs they have not cached |
-| `AUTOLYRICS_JOBS_DIR` | Where jobs are stored (default `jobs/`) |
-| `AUTOLYRICS_DEMUCS_MODEL`, `AUTOLYRICS_WHISPER_MODEL` | Model choices |
+- 🛠️ **[Development setup](docs/development.md)** - install, configuration, command line, frontend.
+- 🧱 **[Architecture](docs/ARCHITECTURE.md)** - layers, the job flow and the timing engine.
+- 📈 **[Plan and benchmark](docs/PLAN.md)** - what is done and how it measures.
 
 ## Credits
 
-- [Composer](https://github.com/better-lyrics/composer) by Better Lyrics (AGPL-3.0): the editor
-  this frontend is forked from.
-- [Spicy Lyrics](https://github.com/Spikerko/spicy-lyrics) by Spikerko (AGPL-3.0): the Preview
-  renderer in `frontend/src/views/preview/spicy/` is adapted from its lyric layout, animator and
-  styles. Its spring model is in turn a port of [spr](https://github.com/Fraktality/spr) by
-  Fraktality (MIT).
-- [ArgonFetch](https://app.argonfetch.dev) for resolving links and audio; LRCLIB, binimum and
-  lyrics-api.boidu.dev for lyrics; Demucs, torchaudio MMS_FA, Whisper and pykakasi for audio and
-  text processing.
+[Composer](https://github.com/better-lyrics/composer) by Better Lyrics (the editor),
+[Spicy Lyrics](https://github.com/Spikerko/spicy-lyrics) by Spikerko (the preview, with
+[spr](https://github.com/Fraktality/spr) by Fraktality),
+[LyricsAlignment-Multilingual](https://github.com/jhuang448/LyricsAlignment-Multilingual) by
+Jiawen Huang and Emmanouil Benetos (the singing model),
+[python-audio-separator](https://github.com/nomadkaraoke/python-audio-separator) and the RoFormer
+model authors, [SwiftF0](https://github.com/lars76/swift-f0), MMS (Meta) and Whisper (OpenAI).
+Not affiliated with Better Lyrics or Spicy Lyrics.
 
 ## License
 
-AGPL-3.0, see `LICENSE`.
+[AGPL-3.0](LICENSE), as the Composer and Spicy Lyrics code it builds on. Model weights keep their
+own licenses, some of them noncommercial.
+
+---
+
+<p align="center">Made by <a href="https://github.com/PianoNic">PianoNic</a></p>
