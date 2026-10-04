@@ -25,7 +25,11 @@ class WhisperTranscriber(ITranscriber):
 
     SAMPLE_RATE = 16000
     VOCALS_16K = "vocals16k.wav"
-    BATCH = 8  # pieces per GPU batch; also how often the progress moves
+    # Pieces per GPU batch. Word timestamps keep every layer's cross-attention, which grows with
+    # the batch: 8 pieces of 28 s filled a 16 GB card and spilled into system memory, where it
+    # crawled and made the desktop stutter. One piece at a time is as fast (17 s for a 3-minute
+    # song) and peaks at 6.5 GB.
+    BATCH = 1
     GHOST = 0.02  # seconds: shorter "words" are Whisper repeating itself, not singing
     PAUSE = 0.6  # seconds of silence that end a line
     LINE_WORDS = 14  # a line longer than this is split at the next word
