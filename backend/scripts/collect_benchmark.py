@@ -15,6 +15,7 @@ collected are skipped.
 
 import asyncio
 import json
+import random
 import re
 import sys
 import unicodedata
@@ -108,6 +109,12 @@ class BenchmarkCollector:
         folder = self._root / self.slug(artist, title)
         if (folder / "meta.json").exists():
             return "already collected"
+        locks = self._root / ".locks"
+        locks.mkdir(parents=True, exist_ok=True)
+        try:  # several collectors may run at once: one song, one collector
+            (locks / self.slug(artist, title)).open("x").close()
+        except FileExistsError:
+            return "taken by another collector"
         candidates = await self._lyrics.search(LyricsQuery(track=title, artist=artist))
         timed = [c for c in candidates if c.declared_sync.is_word_level and c.duration]
         if not timed:
@@ -174,16 +181,48 @@ class AppleCharts:
         return list(seen.values())
 
 
+class ItunesCharts:
+    """The older iTunes feed: up to 200 top songs per country and genre, so many more songs (and
+    more languages) than the most-played charts."""
+
+    URL = "https://itunes.apple.com/{country}/rss/topsongs/limit=200{genre}/json"
+    # Pop, hip-hop/rap, rock, R&B/soul, dance, alternative, latin, K-pop, J-pop, and all genres.
+    GENRES = ("", "14", "18", "21", "15", "17", "20", "12", "51", "27")
+
+    def __init__(self, client: httpx.AsyncClient):
+        self._client = client
+
+    async def songs(self, countries: list[str]) -> list[tuple[str, str]]:
+        seen: dict[str, tuple[str, str]] = {}
+        for country in countries:
+            for genre in self.GENRES:
+                url = self.URL.format(country=country, genre=f"/genre={genre}" if genre else "")
+                try:
+                    response = await self._client.get(url, timeout=20)
+                    entries = response.json()["feed"].get("entry") or []
+                except (httpx.HTTPError, ValueError, KeyError):
+                    continue
+                for e in entries if isinstance(entries, list) else [entries]:
+                    artist = re.split(r" & |, | feat\. ", e["im:artist"]["label"])[0]
+                    title = re.sub(r" \((feat|with|From)[ .].*?\)", "", e["im:name"]["label"])
+                    seen.setdefault(BenchmarkCollector.slug(artist, title), (artist, title))
+            print(f"chart {country}: {len(seen)} songs so far", flush=True)
+        return list(seen.values())
+
+
 async def main() -> None:
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     root = Path(args[0]) if args else Path("benchmarks")
     charts = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--charts=")), None)
+    itunes = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--itunes=")), None)
     async with httpx.AsyncClient(follow_redirects=True) as client:
         collector = BenchmarkCollector(root, client)
-        if charts is None:
+        if charts is None and itunes is None:
             await collector.run()
             return
-        songs = await AppleCharts(client).songs(charts.split(","))
+        songs = (await AppleCharts(client).songs(charts.split(",")) if charts
+                 else await ItunesCharts(client).songs(itunes.split(",")))
+        random.Random(1).shuffle(songs)  # spread the languages; parallel collectors rarely meet
         benchmark = Path(__file__).resolve().parents[2] / "benchmarks"
         skip = {p.name for p in benchmark.iterdir()} if benchmark.exists() else set()
         print(f"{len(songs)} chart songs, {len(skip)} benchmark songs left out", flush=True)
