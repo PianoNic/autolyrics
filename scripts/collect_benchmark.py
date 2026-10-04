@@ -2,6 +2,7 @@
 
     python scripts/collect_benchmark.py [benchmarks_dir]
     python scripts/collect_benchmark.py training --charts=us,de,gb,fr,jp,kr,es,it,br,mx
+    python scripts/collect_benchmark.py training --itunes=us,jp,kr --proxies=proxies.txt --workers=8
 
 With --charts the songs come from Apple Music's public most-played charts of those countries
 instead of SONGS (training data for the acoustic model); songs of the benchmark are skipped.
@@ -26,7 +27,7 @@ from typing import ClassVar
 
 import httpx
 
-from autolyrics.domain.candidate import LyricsQuery
+from autolyrics.domain.candidate import LyricsCandidate
 from autolyrics.domain.services.background_splitter import BackgroundSplitter
 from autolyrics.domain.services.song_title_parser import SongTitleParser
 from autolyrics.infrastructure.clients.media.argonfetch import ArgonFetchMediaResolver, RetryPolicy
@@ -64,46 +65,106 @@ MAX_DRIFT = 2.0  # seconds the upload may differ from the lyrics' length
 YOUTUBE_RESULTS = 6
 
 
+class ProxyPool:
+    """Proxies from a file, one per line: `host:port:user:pass` (Webshare) or a proxy URL.
+    A proxy that fails or is refused rests for a while; the others carry on."""
+
+    REST = 300.0  # seconds a failing proxy is left alone
+
+    def __init__(self, path: Path | None):
+        self.urls: list[str] = []
+        if path is not None and path.exists():
+            for line in path.read_text(encoding="utf-8").split():
+                if "://" in line:
+                    self.urls.append(line)
+                elif line.count(":") == 3:
+                    host, port, user, password = line.split(":")
+                    self.urls.append(f"http://{user}:{password}@{host}:{port}")
+        self.transports = {url: httpx.AsyncHTTPTransport(proxy=url, retries=0) for url in self.urls}
+        self._resting: dict[str, float] = {}
+
+    def __len__(self) -> int:
+        return len(self.urls)
+
+    def healthy(self, now: float) -> list[str]:
+        return [u for u in self.urls if self._resting.get(u, 0.0) <= now]
+
+    def rest(self, url: str, now: float) -> None:
+        self._resting[url] = now + self.REST
+
+    @staticmethod
+    def label(url: str) -> str:
+        return url.rsplit("@", 1)[-1]  # host:port, never the credentials
+
+    async def aclose(self) -> None:
+        for transport in self.transports.values():
+            await transport.aclose()
+
+
 class PoliteTransport(httpx.AsyncBaseTransport):
-    """Every request of the collector goes through here: a minimum gap per host so free
-    community services are not hammered, and retries with backoff when a host pushes back
-    (429, 5xx, dropped connections), honouring Retry-After. Thousands of songs are collected,
-    so this matters more than speed."""
+    """Every request of the collector goes through here: a minimum gap per host (and per proxy)
+    so free services are not hammered, and retries with backoff when a host pushes back (429,
+    5xx, dropped connections), honouring Retry-After.
+
+    YouTube searches are spread over the proxies, each keeping its own gap; everything else goes
+    out directly. lrc.red (binimum) is a free community service: its gap holds for the whole
+    collector, however many workers or proxies there are."""
 
     GAPS: ClassVar = {"lyrics-api.binimum.org": 1.0, "lrc.red": 1.0, "www.youtube.com": 2.0,
-            "app.argonfetch.dev": 1.0}
+                      "app.argonfetch.dev": 0.5}
+    PROXIED: ClassVar = {"www.youtube.com"}
     DEFAULT_GAP = 0.5
     RETRIES = 5
 
-    def __init__(self):
-        self._inner = httpx.AsyncHTTPTransport(retries=0)
-        self._next: dict[str, float] = {}
+    def __init__(self, proxies: ProxyPool | None = None):
+        self._direct = httpx.AsyncHTTPTransport(retries=0)
+        self._proxies = proxies or ProxyPool(None)
+        self._next: dict[tuple[str, str], float] = {}
         self._lock = asyncio.Lock()
         self.throttled = 0
 
-    async def _wait_turn(self, host: str) -> None:
-        async with self._lock:
-            now = asyncio.get_running_loop().time()
-            at = max(now, self._next.get(host, 0.0))
-            self._next[host] = at + self.GAPS.get(host, self.DEFAULT_GAP)
-        if at > now:
-            await asyncio.sleep(at - now)
+    async def _route(self, host: str) -> str:
+        """Wait for a turn and pick the route ("" = direct, else a proxy URL)."""
+        while True:
+            async with self._lock:
+                now = asyncio.get_running_loop().time()
+                routes = [""]
+                if host in self.PROXIED and len(self._proxies):
+                    routes = self._proxies.healthy(now) or [""]
+                route = min(routes, key=lambda r: self._next.get((host, r), 0.0))
+                at = max(now, self._next.get((host, route), 0.0))
+                self._next[(host, route)] = at + self.GAPS.get(host, self.DEFAULT_GAP)
+            if at > now:
+                await asyncio.sleep(at - now)
+            return route
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
         delay = 5.0
+        host = request.url.host
         for attempt in range(self.RETRIES + 1):
-            await self._wait_turn(request.url.host)
+            route = await self._route(host)
+            transport = self._proxies.transports[route] if route else self._direct
             try:
-                response = await self._inner.handle_async_request(request)
-            except (httpx.ConnectError, httpx.ReadError, httpx.RemoteProtocolError):
+                response = await transport.handle_async_request(request)
+            except (httpx.ConnectError, httpx.ReadError, httpx.RemoteProtocolError,
+                    httpx.ConnectTimeout, httpx.ReadTimeout, httpx.ProxyError):
+                if route:
+                    self._proxies.rest(route, asyncio.get_running_loop().time())
+                    continue  # another proxy takes the request right away
                 if attempt == self.RETRIES:
                     raise
             else:
-                if response.status_code not in (429, 500, 502, 503, 504) or attempt == self.RETRIES:
+                refused = response.status_code in (403, 429) and route
+                if response.status_code not in (429, 500, 502, 503, 504) and not refused:
+                    return response
+                if attempt == self.RETRIES:
                     return response
                 self.throttled += response.status_code == 429
                 retry_after = response.headers.get("retry-after", "")
                 await response.aclose()
+                if route:
+                    self._proxies.rest(route, asyncio.get_running_loop().time())
+                    continue
                 if retry_after.isdigit():
                     delay = max(delay, float(retry_after))
             await asyncio.sleep(delay)
@@ -111,7 +172,8 @@ class PoliteTransport(httpx.AsyncBaseTransport):
         raise RuntimeError("unreachable")
 
     async def aclose(self) -> None:
-        await self._inner.aclose()
+        await self._direct.aclose()
+        await self._proxies.aclose()
 
 
 class YouTubeSearch:
@@ -191,12 +253,22 @@ class BenchmarkCollector:
         finally:
             lock.unlink(missing_ok=True)
 
-    async def _collect(self, artist: str, title: str, folder: Path) -> str:
-        candidates = await self._lyrics.search(LyricsQuery(track=title, artist=artist))
-        timed = [c for c in candidates if c.declared_sync.is_word_level and c.duration]
+    async def _best_timed(self, artist: str, title: str) -> LyricsCandidate | None:
+        """The search results say each file's timing; only the best syllable- or word-synced
+        one is downloaded, instead of every result (the lyrics service is paced, so each
+        download costs a second)."""
+        body = await self._lyrics._get_json(self._lyrics.URL, {"track": title, "artist": artist})
+        results = (body or {}).get("results") or [] if isinstance(body, dict) else []
+        rank = {"syllable": 2, "word": 1}
+        timed = [r for r in results if r.get("timing_type") in rank and r.get("duration")]
         if not timed:
+            return None
+        return await self._lyrics._fetch(max(timed, key=lambda r: rank[r["timing_type"]]))
+
+    async def _collect(self, artist: str, title: str, folder: Path) -> str:
+        truth = await self._best_timed(artist, title)
+        if truth is None:
             return "no word-synced lyrics"
-        truth = max(timed, key=lambda c: c.declared_sync.rank)
         lyrics = self._ttml.parse(truth.content)
         if not lyrics.sync_type.is_word_level:
             return f"lyrics parse as {lyrics.sync_type.value}"
@@ -221,16 +293,24 @@ class BenchmarkCollector:
         return f"ok: {lyrics.sync_type.value}, {len(lyrics.all_words)} words, video {video_id}"
 
     async def run(self, songs: list[tuple[str, str]] | None = None,
-                  skip: set[str] | None = None) -> None:
+                  skip: set[str] | None = None, workers: int = 1) -> None:
+        """`workers` songs at a time; the transport keeps every service's pace."""
         self._root.mkdir(parents=True, exist_ok=True)
-        for artist, title in songs or SONGS:
-            if skip and self.slug(artist, title) in skip:
-                continue
-            try:
-                outcome = await self.collect(artist, title)
-            except Exception as error:  # noqa: BLE001 - one song must not stop the collection
-                outcome = f"failed: {error}"
-            print(f"{artist} – {title}: {outcome}", flush=True)
+        queue: asyncio.Queue = asyncio.Queue()
+        for song in songs or SONGS:
+            if not (skip and self.slug(*song) in skip):
+                queue.put_nowait(song)
+
+        async def worker() -> None:
+            while not queue.empty():
+                artist, title = queue.get_nowait()
+                try:
+                    outcome = await self.collect(artist, title)
+                except Exception as error:  # noqa: BLE001 - one song must not stop the rest
+                    outcome = f"failed: {error}"
+                print(f"{artist} – {title}: {outcome}", flush=True)
+
+        await asyncio.gather(*(worker() for _ in range(workers)))
 
 
 class AppleCharts:
@@ -292,7 +372,14 @@ async def main() -> None:
     root = Path(args[0]) if args else Path("benchmarks")
     charts = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--charts=")), None)
     itunes = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--itunes=")), None)
-    transport = PoliteTransport()
+    proxy_file = next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--proxies=")),
+                      None)
+    proxies = ProxyPool(Path(proxy_file) if proxy_file else None)
+    workers = int(next((a.split("=", 1)[1] for a in sys.argv if a.startswith("--workers=")),
+                       "1"))
+    if len(proxies):
+        print(f"{len(proxies)} proxies for YouTube, {workers} workers", flush=True)
+    transport = PoliteTransport(proxies)
     async with httpx.AsyncClient(follow_redirects=True, transport=transport) as client:
         collector = BenchmarkCollector(root, client)
         if charts is None and itunes is None:
@@ -304,7 +391,7 @@ async def main() -> None:
         benchmark = Path(__file__).resolve().parents[1] / "benchmarks"
         skip = {p.name for p in benchmark.iterdir()} if benchmark.exists() else set()
         print(f"{len(songs)} chart songs, {len(skip)} benchmark songs left out", flush=True)
-        await collector.run(songs, skip)
+        await collector.run(songs, skip, workers)
 
 
 if __name__ == "__main__":
