@@ -153,6 +153,22 @@ class BenchmarkCollector:
                                               SongTitleParser(), RetryPolicy())
         self._ttml = TtmlFormat(BackgroundSplitter())
 
+    # "(Remastered 2014)", "[Listenin' Continuous Album Mix]", "(feat. X)", "- Radio Edit": chart
+    # titles carry release details the lyrics sources do not index.
+    BRACKETED = re.compile(r"\s*[(\[]([^)\]]*)[)\]]")
+    DASHED = re.compile(r"\s+-\s+(.*)$")
+    RELEASE_WORDS = re.compile(r"\b(feat|with|from|remaster(ed)?|live|mix|edit|version|remix|"
+                               r"sped up|slowed|acoustic|instrumental|bonus)\b", re.IGNORECASE)
+
+    @classmethod
+    def _release_detail(cls, match: re.Match) -> str:
+        return "" if cls.RELEASE_WORDS.search(match.group(1)) else match.group(0)
+
+    @classmethod
+    def clean_title(cls, title: str) -> str:
+        cleaned = cls.DASHED.sub(cls._release_detail, cls.BRACKETED.sub(cls._release_detail, title))
+        return cleaned.strip() or title
+
     @staticmethod
     def slug(artist: str, title: str) -> str:
         text = unicodedata.normalize("NFKC", f"{artist}-{title}").lower()
@@ -237,7 +253,7 @@ class AppleCharts:
             for r in results:
                 # The main artist only: "A & B" credits rarely match the lyrics sources.
                 artist = re.split(r" & |, | feat\. ", r["artistName"])[0]
-                title = re.sub(r" \((feat|with)\..*?\)", "", r["name"])
+                title = BenchmarkCollector.clean_title(r["name"])
                 seen.setdefault(BenchmarkCollector.slug(artist, title), (artist, title))
         return list(seen.values())
 
@@ -265,7 +281,7 @@ class ItunesCharts:
                     continue
                 for e in entries if isinstance(entries, list) else [entries]:
                     artist = re.split(r" & |, | feat\. ", e["im:artist"]["label"])[0]
-                    title = re.sub(r" \((feat|with|From)[ .].*?\)", "", e["im:name"]["label"])
+                    title = BenchmarkCollector.clean_title(e["im:name"]["label"])
                     seen.setdefault(BenchmarkCollector.slug(artist, title), (artist, title))
             print(f"chart {country}: {len(seen)} songs so far", flush=True)
         return list(seen.values())
