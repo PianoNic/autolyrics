@@ -65,3 +65,38 @@ class TestSyllables:
         pieces = SyllableTimer(Syllabifier()).split(word, span, tokens, "en", True, 0.1)
         assert [(p.text, p.begin, p.end) for p in pieces] == [
             ("beau", 1.0, 2.5), ("ti", 2.5, 3.5), ("ful ", 3.5, 5.0)]
+
+
+class TestTimingJudge:
+    def test_agreement_and_a_clear_hearing_make_a_word_trusted(self):
+        from autolyrics.infrastructure.ml.singing.timing_judge import TimingJudge, WordEvidence
+
+        judge = TimingJudge()
+        sure = WordEvidence(score=0.6, disagreement=0.0, outside_window=0.0, voiced_start=True,
+                            duration_ratio=1.0)
+        guess = WordEvidence(score=0.01, disagreement=2.5, outside_window=2.0,
+                             voiced_start=False, duration_ratio=6.0)
+        assert judge.probability(sure) > TimingJudge.UNSURE > judge.probability(guess)
+
+
+class TestVocalAnalyzer:
+    def test_short_unvoiced_gaps_inside_singing_are_closed(self):
+        import numpy as np
+
+        from autolyrics.infrastructure.ml.singing.vocal_analyzer import VocalAnalyzer
+
+        voiced = np.array([0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1], dtype=bool)
+        closed = VocalAnalyzer._close_gaps(voiced, 3)
+        assert closed.tolist() == [0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1]
+
+    def test_a_voice_holds_until_it_stops(self):
+        import numpy as np
+
+        from autolyrics.infrastructure.ml.singing.vocal_analyzer import VocalEvents
+
+        voiced = np.zeros(100, dtype=bool)
+        voiced[10:60] = True
+        events = VocalEvents(0.1, voiced, np.zeros(100), np.zeros(100))
+        assert events.voiced_until(2.0, limit=9.0) == 6.0
+        assert events.voiced_until(2.0, limit=4.0) == 4.0
+        assert events.voiced_until(7.0, limit=9.0) == 7.0

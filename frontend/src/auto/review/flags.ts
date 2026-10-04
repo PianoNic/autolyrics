@@ -6,7 +6,7 @@ import type { LyricLine, LyricWord } from "@/auto/api/autolyrics-client";
 // "interpolated" alone is informational (a word with no letters, such as a dash, gets a guessed
 // time) and so is a DeepSeek edit the reviewer can see in the change list.
 const FLAG_LABELS: Record<string, string> = {
-  "low-confidence": "The aligner was unsure about this word",
+  "low-confidence": "The timing judge is not sure this word is placed right",
   reanchored: "Moved next to its neighbour; check the timing",
   "llm-note": "DeepSeek asked for a second look at this line",
   transcribed: "Heard by Whisper; no lyrics source had this song",

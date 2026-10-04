@@ -39,6 +39,10 @@ class VocalEvents:
         stop = t + int(stops[0]) if stops.size else end
         return min(limit, stop * self.frame_seconds)
 
+    def voiced_near(self, seconds: float, within: float) -> bool:
+        lo, hi = self.frame(seconds - within), self.frame(seconds + within)
+        return bool(self.voiced[lo:hi + 1].any())
+
     def note_starts(self, start: float, end: float) -> list[float]:
         return [n.start for n in self.notes if start < n.start < end]
 

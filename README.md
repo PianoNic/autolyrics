@@ -21,6 +21,7 @@ Requirements: Python 3.12, Node 22+, ffmpeg on `PATH`, and an NVIDIA GPU for rea
 python -m venv .venv
 .venv/Scripts/python -m pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu128
 .venv/Scripts/python -m pip install -e "backend[ml,dev]"
+.venv/Scripts/python -m pip install --no-deps audio-separator==0.47.0 swift-f0
 
 # 2. Configuration
 cp .env.example .env          # then fill in AGENT_API_KEY (DeepSeek)
@@ -32,8 +33,31 @@ cd frontend && npx -y pnpm@latest install && npx -y pnpm@latest build && cd ..
 .venv/Scripts/autolyrics serve        # open http://localhost:8765
 ```
 
-(`.venv/Scripts/` on Windows, `.venv/bin/` elsewhere.) The first song downloads the models: Demucs
-(~300 MB), the MMS aligner (~1.2 GB) and, only when needed, Whisper (~1.6 GB).
+(`.venv/Scripts/` on Windows, `.venv/bin/` elsewhere.) `audio-separator` goes in without its
+dependencies because it pins a torch release that would replace the CUDA build. The first song
+downloads the models into `models/`: three RoFormer separation models (~0.9 GB), the singing
+acoustic model (57 MB), MMS (~1.2 GB, for languages the singing model does not cover) and, only
+when needed, Whisper (~1.6 GB). Heavy work runs below normal priority with a few CPU threads, so
+the desktop stays responsive.
+
+## How the timing works (pipeline v2)
+
+1. **Separation** (RoFormer, ~2.5 dB cleaner than Demucs): vocals from the mix, then lead from
+   backing vocals, then reverb and echo off the lead.
+2. **Listening**: a phoneme model trained on singing (LyricsAlignment-Multilingual, DALI) hears
+   the dry lead and all vocals; the two hearings are averaged.
+3. **One global solve**: a CTC Viterbi places every word of the song at once. A lyrics source's
+   line times are a soft pull and a soft window, never a hard box, after measuring the constant
+   offset between the source's master and this recording.
+4. **Following the voice** (SwiftF0 pitch and voicing): a held word lasts while it sounds.
+5. **Syllables**: words whose written syllables match their sung vowels are split, each syllable
+   starting at the consonant before its vowel.
+6. **Background vocals** are placed on the backing stem, near their main line.
+7. **The judge**: every word gets a calibrated probability that its timing is right (fitted on
+   the benchmark), and doubtful words are flagged in the editor instead of being patched.
+
+`backend/scripts/collect_benchmark.py` builds a benchmark from songs with hand-made syllable
+timing; `benchmark_suite.py` measures the pipeline on it and `fit_judge.py` calibrates the judge.
 
 Command line, without the web app:
 

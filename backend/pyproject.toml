@@ -27,6 +27,24 @@ ml = [
     "pykakasi>=2.3",
     "transformers>=4.45",
     "accelerate>=1.0",
+    # Pipeline v2. audio-separator itself is installed with --no-deps (its torch pin would
+    # replace the CUDA build); these are the dependencies it needs:
+    "beartype>=0.18.5,<0.19",
+    "rotary-embedding-torch>=0.6.1,<0.7",
+    "samplerate==0.1.0",
+    "ml_collections",
+    "einops",
+    "julius",
+    "diffq-fixed",
+    "onnx2torch-py313",
+    "onnxruntime-gpu",
+    "librosa",
+    "resampy",
+    "pydub",
+    "audioread",
+    "phonemizer>=3.3",
+    "espeakng-loader",
+    "pyphen>=0.16",
 ]
 dev = [
     "pytest>=8",
