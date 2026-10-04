@@ -10,6 +10,9 @@ class SolverLine:
     words: list[list[int]]  # token ids per word; empty for a word with nothing to align
     prior_start: float | None = None  # seconds: where the source says the line starts
     prior_end: float | None = None  # seconds: where the source says it is over (next line)
+    # Words from this index on are optional and skipped together: background vocals sung after
+    # the line ("Warum?", "Och, nö!"), placed here when the audio has them between the lines.
+    optional_from: int | None = None
 
 
 @dataclass
@@ -36,6 +39,7 @@ class _Label:
     line: int = -1
     word: int = -1
     first_of_line: bool = False
+    group: int = -1  # optional block the label belongs to (skipped as a whole)
 
 
 class GlobalCtcSolver:
@@ -50,10 +54,18 @@ class GlobalCtcSolver:
 
     NEG = -1e30
     GAP_LOGP = -1.5  # per frame for a line gap that soaks up sound the lyrics do not cover
+    TRIM = 0.3  # a token ends at its last frame heard at least this share of its peak
 
     def __init__(self, prior_weight: float = 3.0, prior_tolerance: float = 0.35,
                  window_weight: float = 2.0, window_tolerance: float = 1.0,
-                 filler: float | None = None):
+                 filler: float | None = None, inner_blank: float = 0.1,
+                 together: float = 0.0):
+        # Nats per frame of silence between the words of one line: for short exclamations
+        # ("Och, nö!") that are said in one breath.
+        self._together = together
+        # Nats per frame of silence between two sounds of the same word: a word is sung in one
+        # go, so its last sound cannot wander off to a similar sound seconds later.
+        self._inner_blank = inner_blank
         self._filler = filler  # nats per frame a filler pays below the best-matching token
         self._weight = prior_weight  # nats per second beyond the tolerance, on a line's start
         self._tolerance = prior_tolerance
@@ -100,11 +112,13 @@ class GlobalCtcSolver:
             for wi, tokens in enumerate(line.words):
                 if not tokens:
                     continue
+                optional = line.optional_from is not None and wi >= line.optional_from
+                group = li if optional and not first else -1
                 if labels and not first and word_gap is not None:
-                    labels.append(_Label(word_gap, optional=True))
+                    labels.append(_Label(word_gap, optional=True, group=group))
                 for k, token in enumerate(tokens):
                     labels.append(_Label(token, optional=False, line=li, word=wi,
-                                         first_of_line=first and k == 0))
+                                         first_of_line=first and k == 0, group=group))
                 first = False
             if not first:
                 gap = line_gap if line_gap is not None else word_gap
@@ -135,6 +149,7 @@ class GlobalCtcSolver:
             if optional[k - 1] and k >= 2:
                 skip3[s] = True
                 skip4[s] = label_tokens[k] != label_tokens[k - 2]
+        jump_to, jump_from = self._group_jumps(labels, label_tokens, optional)
         # An optional first label may be skipped from the start.
         prior_states, prior_frames = [], []
         for k, lab in enumerate(labels):
@@ -160,10 +175,32 @@ class GlobalCtcSolver:
         tolerance = self._tolerance / em.frame_seconds
         per_frame = self._weight * em.frame_seconds
 
+        inner = np.zeros(states, dtype=bool)
+        between = np.zeros(states, dtype=bool)
+        line_of = [lab.line for lab in labels]
+        for k in range(1, n):
+            if labels[k].word >= 0 and labels[k].word == labels[k - 1].word                     and labels[k].line == labels[k - 1].line:
+                inner[2 * k] = True  # the blank between two sounds of one word
+        if self._together:
+            # Everything from a line's first sound to its last: blanks and word gaps.
+            for k in range(1, n):
+                before = max((j for j in range(k) if line_of[j] >= 0), default=None)
+                after = next((j for j in range(k, n) if line_of[j] >= 0), None)
+                if before is not None and after is not None and line_of[before] == line_of[after]:
+                    between[2 * k] = True
+                    if labels[k].line < 0:
+                        between[2 * k + 1] = True
+        inner_states = np.flatnonzero(inner) if self._inner_blank else np.array([], dtype=np.int64)
+        between_states = np.flatnonzero(between & ~inner)
+
         def emit_at(t: int) -> np.ndarray:
             emit = logp[t, tokens]
-            if prior_states.size or window_states.size:
+            if prior_states.size or window_states.size or inner_states.size or                     between_states.size:
                 emit = emit.copy()
+            if inner_states.size:
+                emit[inner_states] -= self._inner_blank
+            if between_states.size:
+                emit[between_states] -= self._together
             if prior_states.size:
                 distance = np.maximum(0.0, np.abs(t - prior_frames) - tolerance)
                 emit[prior_states] -= distance * per_frame
@@ -172,7 +209,8 @@ class GlobalCtcSolver:
                 emit[window_states] -= outside * window_per_frame
             return emit
 
-        back = np.zeros((frames, states), dtype=np.int8)
+        far = max((t - f for t, f in zip(jump_to, jump_from, strict=True)), default=0)
+        back = np.zeros((frames, states), dtype=np.int8 if far < 127 else np.int16)
         first = emit_at(0)
         alpha = np.full(states, self.NEG)
         alpha[0] = first[0]
@@ -186,6 +224,14 @@ class GlobalCtcSolver:
                                 np.where(skip4, self._shift(alpha, 4), self.NEG)))
             choice = np.argmax(stacked, axis=0)
             best = np.take_along_axis(stacked, choice[None], axis=0)[0]
+            if jump_to.size:
+                # Over a whole optional block: ascending, so the best origin is written last.
+                cand = alpha[jump_from]
+                order = np.argsort(cand)
+                better = cand[order] > best[jump_to[order]]
+                targets, origins = jump_to[order][better], jump_from[order][better]
+                best[targets] = alpha[origins]
+                choice[targets] = targets - origins
             alpha = best + emit_at(t)
             back[t] = choice
 
@@ -193,12 +239,51 @@ class GlobalCtcSolver:
         ends = [states - 1, states - 2]
         if optional[-1] and states >= 4:
             ends += [states - 3, states - 4]
+        ends += self._group_ends(labels)
         s = max(ends, key=lambda e: alpha[e])
         path = np.empty(frames, dtype=np.int64)
         for t in range(frames - 1, -1, -1):
             path[t] = s
             s -= int(back[t, s])
         return path
+
+    @staticmethod
+    def _blocks(labels: list[_Label]) -> list[tuple[int, int]]:
+        """(first, last) label index of every optional block."""
+        blocks: list[tuple[int, int]] = []
+        for k, lab in enumerate(labels):
+            if lab.group < 0:
+                continue
+            if blocks and labels[blocks[-1][1]].group == lab.group and blocks[-1][1] == k - 1:
+                blocks[-1] = (blocks[-1][0], k)
+            else:
+                blocks.append((k, k))
+        return blocks
+
+    def _group_jumps(self, labels: list[_Label], label_tokens: np.ndarray,
+                     optional: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """State pairs (to, from) that skip a whole optional block: from the label or blank
+        before it to the next label, or past an optional gap after it."""
+        to, frm = [], []
+        n = len(labels)
+        for a, b in self._blocks(labels):
+            targets = [c for c in (b + 1, b + 2) if c < n and (c == b + 1 or optional[b + 1])]
+            for c in targets:
+                if a >= 1 and label_tokens[a - 1] != label_tokens[c]:
+                    to.append(2 * c + 1)
+                    frm.append(2 * (a - 1) + 1)
+                to.append(2 * c + 1)
+                frm.append(2 * a)
+        return np.array(to, dtype=np.int64), np.array(frm, dtype=np.int64)
+
+    def _group_ends(self, labels: list[_Label]) -> list[int]:
+        """A song may end before an optional block at its very end."""
+        n = len(labels)
+        out = []
+        for a, b in self._blocks(labels):
+            if b == n - 1 or (b == n - 2 and labels[n - 1].optional):
+                out += [2 * a] + ([2 * (a - 1) + 1] if a >= 1 else [])
+        return out
 
     @classmethod
     def _shift(cls, values: np.ndarray, by: int) -> np.ndarray:
@@ -225,7 +310,11 @@ class GlobalCtcSolver:
             if not frames:
                 continue  # cannot happen for a required label; guards a degenerate path
             probs = np.exp(logp[frames, lab.token])
-            span = TokenSpan(frames[0], frames[-1] + 1, float(probs.mean()))
+            # CTC may stay in a token long after it stopped hearing it (the next line is already
+            # being sung): the token ends where the model last heard it clearly.
+            heard = np.flatnonzero(probs >= GlobalCtcSolver.TRIM * probs.max())
+            last = int(heard[-1]) if heard.size else len(frames) - 1
+            span = TokenSpan(frames[0], frames[last] + 1, float(probs[:last + 1].mean()))
             key = (lab.line, lab.word)
             if key not in words:
                 words[key] = WordSpan(lab.line, lab.word, 0.0, 0.0, 0.0)

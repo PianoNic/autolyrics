@@ -72,6 +72,7 @@ class SingingLyricsAligner(ILyricsAligner):
     # Background vocals answer or echo their line: they start after it does, so a sound before the
     # line that resembles an ad-lib ("Warum?") cannot take it.
     BACKGROUND_BEFORE, BACKGROUND_AFTER = 0.2, 2.5
+    BACKGROUND_PULL = 20.0  # nats per second an ad-lib pays for straying from its line's end
 
     def __init__(self, ffmpeg: Ffmpeg, models: AcousticModels, solver: GlobalCtcSolver,
                  analyzer: VocalAnalyzer, repairer: TimingRepairer, offsets: OffsetEstimator,
@@ -81,6 +82,10 @@ class SingingLyricsAligner(ILyricsAligner):
         self._repeats = repeats
         self._syllables = syllables
         self._timing_judge = judge or TimingJudge()
+        # Ad-libs are faint: their evidence is weak, so the pull toward the end of their line is
+        # firm.
+        self._background_solver = GlobalCtcSolver(prior_weight=self.BACKGROUND_PULL,
+                                                  prior_tolerance=0.3, together=0.3)
         self.last_evidence: dict = {}
         self._ffmpeg = ffmpeg
         self._models = models
@@ -125,12 +130,15 @@ class SingingLyricsAligner(ILyricsAligner):
             self._follow_voice(lines, events)
             syllables = self._split_syllables(lines, placed, model, language, em.frame_seconds)
             progress.update(0.75, "background vocals")
-            # Ad-libs are often the lead singer's own voice, which the lead/backing split keeps
-            # in the lead: background words listen to the backing stem and all vocals together.
+            # Ad-libs are sometimes the lead singer's own voice (kept in the lead by the
+            # lead/backing split), sometimes another voice (in the backing stem): each line of
+            # them is placed with all vocals and with backing plus vocals, and keeps whichever
+            # hearing matches it more clearly.
             hearings = [heard[-1]]
             if stems.backing and stems.backing.exists():
-                hearings.insert(0, self._emissions(model, stems.backing, workspace))
-            self._align_background(lines, model, language, self._combine(hearings))
+                hearings.append(self._combine([self._emissions(model, stems.backing, workspace),
+                                               heard[-1]]))
+            self._align_background(lines, model, language, hearings)
             for line in lines:
                 self._repairer.repair(line)
                 line.begin = line.end = None
@@ -177,8 +185,14 @@ class SingingLyricsAligner(ILyricsAligner):
             if line_synced:
                 # A line-synced source's line lasts until the next one begins.
                 prior_end = lines[i + 1].begin if i + 1 < len(lines) else line.end
-            solver_lines.append(SolverLine(model.tokens([w.text for w in line.words], language),
-                                           line.begin if line_synced else None, prior_end))
+            # Background words follow the line's own words as an optional block: placed in
+            # the gap after the line when the audio has them there (call and response), skipped
+            # when they overlap the singing (then they are searched separately).
+            texts = [w.text for w in line.words] + [w.text for w in line.background]
+            solver_lines.append(SolverLine(model.tokens(texts, language),
+                                           line.begin if line_synced else None, prior_end,
+                                           optional_from=len(line.words) if line.background
+                                           else None))
         spans = self._solver.solve(em, solver_lines, model.word_gap, model.line_gap)
         offset = 0.0
         if line_synced:
@@ -206,12 +220,14 @@ class SingingLyricsAligner(ILyricsAligner):
                     best = drifting
             _, spans, solver_lines = best
         self._apply(spans, lines)
-        placed = {(s.line, s.word): (s, solver_lines[s.line].words[s.word]) for s in spans}
+        placed = {(s.line, s.word): (s, solver_lines[s.line].words[s.word]) for s in spans
+                  if s.word < len(lines[s.line].words)}
         return offset, placed, solver_lines
 
     def _solve_shifted(self, em: Emissions, model: IAcousticModel, lines: list[SolverLine],
                        shifts: list[float]) -> tuple[float, list[WordSpan], list[SolverLine]]:
-        shifted = [SolverLine(line.words, line.prior_start + shift, line.prior_end + shift)
+        shifted = [SolverLine(line.words, line.prior_start + shift, line.prior_end + shift,
+                              line.optional_from)
                    for line, shift in zip(lines, shifts, strict=True)]
         spans = self._solver.solve(em, shifted, model.word_gap, model.line_gap)
         return self._solver.last_acoustic_score, spans, shifted
@@ -293,17 +309,22 @@ class SingingLyricsAligner(ILyricsAligner):
 
     @staticmethod
     def _apply(spans: list[WordSpan], lines: list[Line]) -> None:
+        """Span word indices run through the line's words, then its background words."""
         for s in spans:
-            word = lines[s.line].words[s.word]
+            line = lines[s.line]
+            word = (line.words[s.word] if s.word < len(line.words)
+                    else line.background[s.word - len(line.words)])
             word.begin, word.end, word.confidence = round(s.begin, 3), round(s.end, 3), s.score
 
     def _solve_window(self, em: Emissions, tokens: list[list[int]], model: IAcousticModel,
-                      start: float, end: float) -> list[WordSpan]:
+                      start: float, end: float, expected: float | None = None) -> list[WordSpan]:
         lo, hi = max(0, em.frame(start)), min(em.frames, em.frame(end))
         if hi - lo < 2 * sum(len(t) for t in tokens) + 1:
             return []
         window = Emissions(em.logp[lo:hi], em.frame_seconds, em.blank)
-        spans = self._solver.solve(window, [SolverLine(tokens)], model.word_gap, model.line_gap)
+        prior = None if expected is None else expected - em.seconds(lo)
+        solver = self._solver if expected is None else self._background_solver
+        spans = solver.solve(window, [SolverLine(tokens, prior)], model.word_gap, model.line_gap)
         shift = em.seconds(lo)
         for s in spans:
             s.begin += shift
@@ -328,20 +349,27 @@ class SingingLyricsAligner(ILyricsAligner):
     # -- background vocals ----------------------------------------------------
 
     def _align_background(self, lines: list[Line], model: IAcousticModel, language: str,
-                          em: Emissions) -> None:
+                          hearings: list[Emissions]) -> None:
         # Background lines are sung in order too: each one searches only after the previous
         # one, so repeated ad-libs ("ciao, ciao") are not all placed on the same sounds.
         taken = 0.0
         for line in lines:
             if not line.background:
                 continue
+            if all(w.timed for w in line.background):
+                taken = max(taken, max(w.end for w in line.background))
+                continue  # placed by the global solve, after its line
             timed = [w for w in line.words if w.timed]
             if not timed:
                 continue
             tokens = model.tokens([w.text for w in line.background], language)
-            spans = self._solve_window(em, tokens, model,
-                                       max(taken, timed[0].begin - self.BACKGROUND_BEFORE),
-                                       timed[-1].end + self.BACKGROUND_AFTER)
+            # Written after the line's words, an ad-lib answers the line: it is pulled softly
+            # toward where the line's singing ends.
+            start = max(taken, timed[0].begin - self.BACKGROUND_BEFORE)
+            options = [self._solve_window(em, tokens, model, start,
+                                          timed[-1].end + self.BACKGROUND_AFTER,
+                                          expected=timed[-1].end) for em in hearings]
+            spans = max(options, key=lambda o: mean(s.score for s in o) if o else -1.0)
             if spans:
                 taken = max(s.end for s in spans)
             for s in spans:

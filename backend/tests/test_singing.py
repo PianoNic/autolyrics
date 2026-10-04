@@ -139,3 +139,18 @@ class TestRoformerStemNames:
         files = [Path("1-vocals_(Instrumental)_karaoke.wav"), Path("1-vocals_(Vocals)_karaoke.wav")]
         assert RoformerVocalSeparator._stem(files, "vocals").name == "1-vocals_(Vocals)_karaoke.wav"
         assert RoformerVocalSeparator._stem(files, "instrumental") == files[0]
+
+
+class TestOptionalBlocks:
+    def test_background_words_sung_after_the_line_are_placed_there(self):
+        em = emissions(40, {A: [5], B: [12], GAP: [20]})
+        line = SolverLine([[A], [B]], optional_from=1)
+        spans = GlobalCtcSolver().solve(em, [line], word_gap=None, line_gap=None)
+        assert [(s.word, round(s.begin, 1)) for s in spans] == [(0, 0.5), (1, 1.2)]
+
+    def test_a_block_the_audio_lacks_is_skipped_whole(self):
+        # Line 1 "A", optional "B B" (not sung), line 2 "A": the second A must not be eaten.
+        em = emissions(40, {A: [5, 25]})
+        lines = [SolverLine([[A], [B, B]], optional_from=1), SolverLine([[A]])]
+        spans = GlobalCtcSolver().solve(em, lines, word_gap=None, line_gap=None)
+        assert [(s.line, s.word, round(s.begin, 1)) for s in spans] == [(0, 0, 0.5), (1, 0, 2.5)]
