@@ -4,7 +4,12 @@ from dataclasses import dataclass
 
 from mediatorx import UNIT, ICommand, ICommandHandler, Unit
 
-from autolyrics.application.interfaces.audio import ILyricsAligner, ITranscriber, IVocalSeparator
+from autolyrics.application.interfaces.audio import (
+    ILyricsAligner,
+    ITranscriber,
+    IVocalSeparator,
+    VocalStems,
+)
 from autolyrics.application.interfaces.progress import IProgress
 from autolyrics.application.pipeline.context import PipelineContext
 from autolyrics.domain.job import Stage
@@ -39,23 +44,23 @@ class AlignLyricsHandler(ICommandHandler[AlignLyricsCommand, Unit]):
         await ctx.reporter.running(Stage.ALIGN, "Isolating vocals (Demucs)")
         started = time.time()
         try:
-            vocals = await asyncio.to_thread(
-                self._separator.separate, ctx.audio, ctx.workspace,
+            stems = await asyncio.to_thread(
+                self._separator.stems, ctx.audio, ctx.workspace,
                 ctx.reporter.progress(Stage.ALIGN, "Isolating vocals"))
             await ctx.reporter.running(
                 Stage.ALIGN, f"Vocals isolated in {time.time() - started:.0f}s; "
                 + ("checking the source's timing against them" if word_level else "aligning words"))
             if word_level:
-                result = await asyncio.to_thread(self._check_offset, ctx, vocals)
+                result = await asyncio.to_thread(self._check_offset, ctx, stems)
             else:
                 if ctx.lyrics.sync_type == SyncType.UNSYNCED:
                     await ctx.reporter.running(
                         Stage.ALIGN, "No line times; finding where each line is sung (Whisper)")
                     ctx.report["anchoring"] = await asyncio.to_thread(
-                        self._anchor, ctx, vocals,
+                        self._anchor, ctx, stems.vocals,
                         ctx.reporter.progress(Stage.ALIGN, "Finding the lines (Whisper)"))
                 result = await asyncio.to_thread(
-                    self._aligner.align, ctx.lyrics, vocals, ctx.workspace,
+                    self._aligner.align, ctx.lyrics, stems, ctx.workspace,
                     ctx.reporter.progress(Stage.ALIGN, "Aligning words"))
         except Exception as error:  # model, decoder and memory errors alike
             raise await ctx.reporter.fail(Stage.ALIGN, str(error)) from error
@@ -94,8 +99,8 @@ class AlignLyricsHandler(ICommandHandler[AlignLyricsCommand, Unit]):
         matched = self._anchorer.anchor(ctx.lyrics, heard, ctx.duration or 0.0)
         return {"matched_lines": matched, "lines": len(ctx.lyrics.content_lines)}
 
-    def _check_offset(self, ctx: PipelineContext, vocals) -> dict:
-        check = self._aligner.measure_offset(ctx.lyrics, vocals, ctx.workspace)
+    def _check_offset(self, ctx: PipelineContext, stems: VocalStems) -> dict:
+        check = self._aligner.measure_offset(ctx.lyrics, stems, ctx.workspace)
         # Shift only for a clear, consistent offset; a spread-out difference means the aligner
         # disagrees word by word, and the source's own timing is the better bet.
         if check["spread"] is None:

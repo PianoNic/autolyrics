@@ -79,6 +79,19 @@ from autolyrics.infrastructure.media.ffmpeg import Ffmpeg
 from autolyrics.infrastructure.ml.demucs_separator import DemucsVocalSeparator
 from autolyrics.infrastructure.ml.japanese_text import JapaneseText, WordSegmenter
 from autolyrics.infrastructure.ml.mms_lyrics_aligner import MmsLyricsAligner
+from autolyrics.infrastructure.ml.mms_model import MmsModel
+from autolyrics.infrastructure.ml.roformer_separator import RoformerVocalSeparator
+from autolyrics.infrastructure.ml.singing.ctc_solver import GlobalCtcSolver
+from autolyrics.infrastructure.ml.singing.lam_model import Phonemizer, SingingPhonemeModel
+from autolyrics.infrastructure.ml.singing.mms_acoustic import MmsCharacterModel
+from autolyrics.infrastructure.ml.singing.model_files import ModelFiles
+from autolyrics.infrastructure.ml.singing.singing_aligner import (
+    AcousticModels,
+    SingingLyricsAligner,
+)
+from autolyrics.infrastructure.ml.singing.syllables import Syllabifier, SyllableTimer
+from autolyrics.infrastructure.ml.singing.vocal_analyzer import VocalAnalyzer
+from autolyrics.infrastructure.ml.text_normalizer import AlignmentTextNormalizer
 from autolyrics.infrastructure.ml.vocal_activity import VocalActivity
 from autolyrics.infrastructure.ml.whisper_transcriber import WhisperTranscriber
 from autolyrics.infrastructure.persistence.file_job_repository import FileJobRepository
@@ -126,10 +139,14 @@ class Container:
             PortatoProvider(self.http, s.boidu_api_key, self.qrc),
             LrclibProvider(self.http, self.lrc),
         ]
-        self.separator = DemucsVocalSeparator(self.ffmpeg, s.demucs_model)
+        self.model_files = ModelFiles(s.models_dir)
+        self.separator = (RoformerVocalSeparator(self.ffmpeg, s.models_dir / "separator")
+                          if s.separator == "roformer"
+                          else DemucsVocalSeparator(self.ffmpeg, s.demucs_model))
         self.japanese = JapaneseText()
-        self.aligner = MmsLyricsAligner(self.ffmpeg, self.repairer, self.offsets, self.languages,
-                                        self.japanese, WordSegmenter(self.japanese))
+        self.aligner = (self._v2_aligner() if s.aligner == "v2" else
+                        MmsLyricsAligner(self.ffmpeg, self.repairer, self.offsets, self.languages,
+                                         self.japanese, WordSegmenter(self.japanese)))
         self.transcriber = WhisperTranscriber(self.ffmpeg, self.languages, VocalActivity(),
                                               s.whisper_model)
         self.llm = OpenAiCompatibleLlmClient(self.http, s.llm_base_url, s.llm_api_key, s.llm_model)
@@ -206,6 +223,19 @@ class Container:
         # behaviors
         self.resolver.add_instance(LoggingBehavior, LoggingBehavior())
         self.mediator.add_behavior(LoggingBehavior)
+
+    def _v2_aligner(self) -> SingingLyricsAligner:
+        def mms() -> MmsCharacterModel:
+            model = MmsModel()
+            return MmsCharacterModel(model, AlignmentTextNormalizer(model.alphabet, self.japanese))
+
+        def singing() -> SingingPhonemeModel:
+            return SingingPhonemeModel(self.model_files.singing_checkpoint(), Phonemizer())
+
+        return SingingLyricsAligner(self.ffmpeg, AcousticModels(singing, mms), GlobalCtcSolver(),
+                                    VocalAnalyzer(self.ffmpeg), self.repairer, self.offsets,
+                                    self.languages, WordSegmenter(self.japanese),
+                                    SyllableTimer(Syllabifier()))
 
     async def aclose(self) -> None:
         await self.queue.stop()

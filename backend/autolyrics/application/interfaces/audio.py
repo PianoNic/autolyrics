@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from pathlib import Path
 
 from autolyrics.application.interfaces.progress import NO_PROGRESS, IProgress
@@ -10,29 +11,44 @@ class IAudioTools(ABC):
     def duration(self, path: Path) -> float: ...
 
 
+@dataclass(frozen=True)
+class VocalStems:
+    """What separation gives the aligners: the lead vocal (dry, for timing the main lines), the
+    backing vocals (for the background lines) and all vocals together (for transcription)."""
+
+    lead: Path
+    vocals: Path
+    backing: Path | None = None
+
+
 class IVocalSeparator(ABC):
     """Isolates the vocals of a song. Blocking; call it off the event loop."""
 
     @abstractmethod
+    def stems(self, audio: Path, workspace: Path,
+              progress: IProgress = NO_PROGRESS) -> VocalStems:
+        """Separate the song, reusing stems already in `workspace`."""
+
     def separate(self, audio: Path, workspace: Path,
                  progress: IProgress = NO_PROGRESS) -> Path:
-        """Return the vocals file, reusing one already in `workspace`."""
+        """The lead vocal: what the words are timed against."""
+        return self.stems(audio, workspace, progress).lead
 
 
 class ILyricsAligner(ABC):
     """Times lyrics text against isolated vocals. Blocking; call it off the event loop."""
 
     @abstractmethod
-    def align(self, lyrics: Lyrics, vocals: Path, workspace: Path,
+    def align(self, lyrics: Lyrics, stems: VocalStems, workspace: Path,
               progress: IProgress = NO_PROGRESS) -> dict:
         """Give every word a time, in place. Returns statistics for the report."""
 
     @abstractmethod
-    def measure_offset(self, lyrics: Lyrics, vocals: Path, workspace: Path) -> dict:
+    def measure_offset(self, lyrics: Lyrics, stems: VocalStems, workspace: Path) -> dict:
         """How far already-timed lyrics sit from this audio: {offset, spread, words}."""
 
     @abstractmethod
-    def realign_line(self, line: Line, vocals: Path, workspace: Path, language: str,
+    def realign_line(self, line: Line, stems: VocalStems, workspace: Path, language: str,
                      start: float, end: float) -> bool:
         """Re-time one line inside [start, end], in place."""
 

@@ -7,7 +7,7 @@ from statistics import mean
 import numpy as np
 import soundfile as sf
 
-from autolyrics.application.interfaces.audio import ILyricsAligner
+from autolyrics.application.interfaces.audio import ILyricsAligner, VocalStems
 from autolyrics.application.interfaces.progress import NO_PROGRESS, IProgress
 from autolyrics.domain.lyrics import Line, Lyrics, Word
 from autolyrics.domain.services.language_guesser import LanguageGuesser
@@ -94,8 +94,9 @@ class MmsLyricsAligner(ILyricsAligner):
 
     # -- ILyricsAligner -------------------------------------------------------
 
-    def align(self, lyrics: Lyrics, vocals: Path, workspace: Path,
+    def align(self, lyrics: Lyrics, stems: VocalStems, workspace: Path,
               progress: IProgress = NO_PROGRESS) -> dict:
+        vocals = stems.lead
         with self._lock:
             language = self._languages.guess(lyrics)
             run = self._run(vocals, workspace, language)
@@ -127,14 +128,16 @@ class MmsLyricsAligner(ILyricsAligner):
                 w.flag(flag)
         return len(line.all_words) - before
 
-    def measure_offset(self, lyrics: Lyrics, vocals: Path, workspace: Path) -> dict:
+    def measure_offset(self, lyrics: Lyrics, stems: VocalStems, workspace: Path) -> dict:
+        vocals = stems.lead
         with self._lock:
             probe = lyrics.model_copy(deep=True)
             self._align(probe, self._run(vocals, workspace, self._languages.guess(lyrics)))
             return self._offsets.word_offset(lyrics, probe)
 
-    def realign_line(self, line: Line, vocals: Path, workspace: Path, language: str,
+    def realign_line(self, line: Line, stems: VocalStems, workspace: Path, language: str,
                      start: float, end: float) -> bool:
+        vocals = stems.lead
         with self._lock:
             samples = self._samples(vocals, workspace)
             # Emissions only around the line: an edit should take a second, not a song's worth.

@@ -14,6 +14,7 @@ from autolyrics.application.jobs.notifications import JobEventRaised
 from autolyrics.application.jobs.run_job import RunJobCommand
 from autolyrics.composition.container import Container
 from autolyrics.domain.job import JobOptions, JobStatus
+from autolyrics.infrastructure.runtime.background_priority import BackgroundPriority
 
 
 class ConsoleProgressPrinter(INotificationHandler[JobEventRaised]):
@@ -40,6 +41,7 @@ class CliApplication:
         if argv and argv[0] not in self.COMMANDS and not argv[0].startswith("-"):
             argv = ["run", *argv]
         args = self._parser().parse_args(argv)
+        BackgroundPriority().apply()
         if hasattr(sys.stdout, "reconfigure"):
             sys.stdout.reconfigure(encoding="utf-8")
         logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING,

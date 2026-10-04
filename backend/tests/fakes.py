@@ -7,6 +7,7 @@ from autolyrics.application.interfaces.audio import (
     ILyricsAligner,
     ITranscriber,
     IVocalSeparator,
+    VocalStems,
 )
 from autolyrics.application.interfaces.llm import ILlmClient
 from autolyrics.application.interfaces.lyrics import ILyricsProvider
@@ -65,11 +66,11 @@ class CrashingProvider(ILyricsProvider):
 
 
 class FakeSeparator(IVocalSeparator):
-    def separate(self, audio: Path, workspace: Path,
-                 progress: IProgress = NO_PROGRESS) -> Path:
+    def stems(self, audio: Path, workspace: Path,
+              progress: IProgress = NO_PROGRESS) -> VocalStems:
         path = workspace / "vocals.wav"
         path.write_bytes(b"vocals")
-        return path
+        return VocalStems(lead=path, vocals=path)
 
 
 class FakeAligner(ILyricsAligner):
@@ -80,7 +81,7 @@ class FakeAligner(ILyricsAligner):
         self.released = 0
         self.realigned: list[tuple[float, float]] = []
 
-    def align(self, lyrics: Lyrics, vocals: Path, workspace: Path,
+    def align(self, lyrics: Lyrics, stems: VocalStems, workspace: Path,
               progress: IProgress = NO_PROGRESS) -> dict:
         t = 10.0
         for line in lyrics.content_lines:
@@ -93,10 +94,10 @@ class FakeAligner(ILyricsAligner):
                 "words": len(lyrics.all_words), "low_confidence": 0, "interpolated": 0,
                 "reanchored": 0, "mean_confidence": 0.5, "failed_lines": 0}
 
-    def measure_offset(self, lyrics: Lyrics, vocals: Path, workspace: Path) -> dict:
+    def measure_offset(self, lyrics: Lyrics, stems: VocalStems, workspace: Path) -> dict:
         return {"offset": self.offset, "spread": 0.02, "words": 300}
 
-    def realign_line(self, line: Line, vocals: Path, workspace: Path, language: str,
+    def realign_line(self, line: Line, stems: VocalStems, workspace: Path, language: str,
                      start: float, end: float) -> bool:
         self.realigned.append((start, end))
         step = (end - start) / max(1, len(line.all_words))

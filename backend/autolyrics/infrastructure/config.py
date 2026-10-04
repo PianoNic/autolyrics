@@ -41,6 +41,15 @@ class Settings(BaseSettings):
     # cut of the song (e.g. a music video versus the album version).
     duration_tolerance: float = Field(3.0, validation_alias="AUTOLYRICS_DURATION_TOLERANCE")
 
+    # Pipeline v2: "roformer" separation (vocals, lead/backing, de-reverb) and the "v2" aligner
+    # (singing acoustic model, one global solve, word ends from the voice). "demucs" and "mms"
+    # are the previous engines.
+    separator: str = Field("roformer", validation_alias="AUTOLYRICS_SEPARATOR")
+    aligner: str = Field("v2", validation_alias="AUTOLYRICS_ALIGNER")
+    # Downloaded model weights (separation models, the singing acoustic model).
+    models_dir: Path = Field(Path(__file__).resolve().parents[3] / "models",
+                             validation_alias="AUTOLYRICS_MODELS_DIR")
+
     # Demucs model for vocal isolation; htdemucs_ft is about 4x slower than htdemucs but cleaner.
     demucs_model: str = Field("htdemucs_ft", validation_alias="AUTOLYRICS_DEMUCS_MODEL")
 

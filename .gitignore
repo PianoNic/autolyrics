@@ -18,3 +18,6 @@ models/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Benchmark songs (audio and third-party lyrics)
+benchmarks/

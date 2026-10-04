@@ -34,9 +34,10 @@ class TranscribeLyricsHandler(ICommandHandler[TranscribeLyricsCommand, Unit]):
                                                  "with Whisper")
         started = time.time()
         try:
-            vocals = await asyncio.to_thread(
-                self._separator.separate, ctx.audio, ctx.workspace,
+            stems = await asyncio.to_thread(
+                self._separator.stems, ctx.audio, ctx.workspace,
                 ctx.reporter.progress(Stage.LYRICS, "Isolating vocals"))
+            vocals = stems.vocals
             lyrics = await asyncio.to_thread(
                 self._transcriber.transcribe, vocals, ctx.workspace, None,
                 ctx.reporter.progress(Stage.LYRICS, "Transcribing (Whisper)"))

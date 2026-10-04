@@ -45,7 +45,7 @@ class PolishLyricsHandler(ICommandHandler[PolishLyricsCommand, Unit]):
 
     def _hear(self, ctx: PipelineContext, separating: IProgress, hearing: IProgress):
         try:
-            vocals = self._separator.separate(ctx.audio, ctx.workspace, separating)
+            vocals = self._separator.stems(ctx.audio, ctx.workspace, separating).vocals
             return self._transcriber.transcribe(vocals, ctx.workspace,
                                                 ctx.lyrics.metadata.language, hearing)
         except Exception:  # noqa: BLE001 - a second opinion only; the clean-up works without it

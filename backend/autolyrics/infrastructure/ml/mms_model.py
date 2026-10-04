@@ -34,6 +34,7 @@ class MmsModel:
         bundle = torchaudio.pipelines.MMS_FA
         self._model = bundle.get_model(with_star=True).to(self.device).eval()
         self._dictionary = bundle.get_dict(star="*")
+        self.dictionary = self._dictionary
         self.alphabet = {c for c in self._dictionary if c not in ("-", "*")}
 
     def close(self) -> None:

@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import soundfile as sf
 
-from autolyrics.application.interfaces.audio import IVocalSeparator
+from autolyrics.application.interfaces.audio import IVocalSeparator, VocalStems
 from autolyrics.application.interfaces.progress import NO_PROGRESS, IProgress
 from autolyrics.infrastructure.media.ffmpeg import Ffmpeg
 
@@ -20,8 +20,12 @@ class DemucsVocalSeparator(IVocalSeparator):
         self._ffmpeg = ffmpeg
         self._model_name = model_name
 
-    def separate(self, audio: Path, workspace: Path,
-                 progress: IProgress = NO_PROGRESS) -> Path:
+    def stems(self, audio: Path, workspace: Path,
+              progress: IProgress = NO_PROGRESS) -> VocalStems:
+        vocals = self._separate(audio, workspace, progress)
+        return VocalStems(lead=vocals, vocals=vocals)
+
+    def _separate(self, audio: Path, workspace: Path, progress: IProgress) -> Path:
         vocals_path = workspace / self.VOCALS_FILE
         if vocals_path.exists():
             return vocals_path
