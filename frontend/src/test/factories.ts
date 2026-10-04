@@ -1,0 +1,106 @@
+import { DEFAULT_AGENTS } from "@/domain/agent/colors";
+import { reconcileLine, type LyricLine } from "@/domain/line/model";
+import { type SnapPoint, toSnapPoints } from "@/domain/snap-point/model";
+import type { WordTiming } from "@/domain/word/timing";
+import type { ProjectSaveInput } from "@/lib/persistence";
+import { DEFAULT_SYLLABLE_SPLIT_DEFAULTS } from "@/stores/project/types";
+
+interface FactoryLineOptions {
+  id?: string;
+  text?: string;
+  agentId?: string;
+  begin?: number;
+  end?: number;
+  words?: FactoryWordOptions[];
+  backgroundText?: string;
+  backgroundWords?: FactoryWordOptions[];
+  backgroundTextSource?: "extraction" | "manual";
+  groupId?: string;
+  instanceIdx?: number;
+  templateLineIdx?: number;
+}
+
+interface FactoryWordOptions {
+  text: string;
+  begin: number;
+  end: number;
+  explicit?: true;
+  syllableGroupId?: string;
+}
+
+interface FactoryGroupOptions {
+  id?: string;
+  label?: string;
+  color?: string;
+  templateVersion?: number;
+}
+
+let lineCounter = 0;
+let groupCounter = 0;
+
+function createWord(opts: FactoryWordOptions): WordTiming {
+  return {
+    text: opts.text,
+    begin: opts.begin,
+    end: opts.end,
+    ...(opts.explicit ? { explicit: opts.explicit } : {}),
+    ...(opts.syllableGroupId ? { syllableGroupId: opts.syllableGroupId } : {}),
+  };
+}
+
+function createLine(opts: FactoryLineOptions = {}): LyricLine {
+  const id = opts.id ?? `line-${++lineCounter}`;
+  const text = opts.text ?? "Test lyric line";
+  const agentId = opts.agentId ?? DEFAULT_AGENTS[0]?.id ?? "v1";
+  return reconcileLine({
+    id,
+    text,
+    agentId,
+    ...(opts.begin !== undefined ? { begin: opts.begin } : {}),
+    ...(opts.end !== undefined ? { end: opts.end } : {}),
+    ...(opts.words ? { words: opts.words.map(createWord) } : {}),
+    ...(opts.backgroundText ? { backgroundText: opts.backgroundText } : {}),
+    ...(opts.backgroundWords ? { backgroundWords: opts.backgroundWords.map(createWord) } : {}),
+    ...(opts.backgroundTextSource ? { backgroundTextSource: opts.backgroundTextSource } : {}),
+    ...(opts.groupId ? { groupId: opts.groupId } : {}),
+    ...(opts.instanceIdx !== undefined ? { instanceIdx: opts.instanceIdx } : {}),
+    ...(opts.templateLineIdx !== undefined ? { templateLineIdx: opts.templateLineIdx } : {}),
+  });
+}
+
+function snapPoints(times: number[]): SnapPoint[] {
+  return toSnapPoints(times);
+}
+
+function createGroup(opts: FactoryGroupOptions = {}) {
+  const id = opts.id ?? `group-${++groupCounter}`;
+  return {
+    id,
+    label: opts.label ?? `Group ${groupCounter}`,
+    color: opts.color ?? "#a3c9ff",
+    templateVersion: opts.templateVersion ?? 0,
+  };
+}
+
+function createProjectSaveInput(overrides: Partial<ProjectSaveInput> = {}): ProjectSaveInput {
+  return {
+    metadata: { title: "t", artists: [], album: "", duration: 0 },
+    agents: DEFAULT_AGENTS,
+    lines: [{ id: "L1", text: "hi", agentId: DEFAULT_AGENTS[0].id }],
+    groups: [],
+    granularity: "word",
+    syllableSplitDefaults: DEFAULT_SYLLABLE_SPLIT_DEFAULTS,
+    audioSource: { kind: "file", name: "silence.mp3" },
+    dismissedSuggestions: [],
+    dismissedExplicitSuggestions: [],
+    currentStem: "original",
+    primingStripped: false,
+    customSnapPoints: [],
+    hasUnexportedImport: false,
+    importedMetadataKeys: [],
+    ttmlEditState: null,
+    ...overrides,
+  };
+}
+
+export { createLine, createWord, createGroup, createProjectSaveInput, snapPoints };

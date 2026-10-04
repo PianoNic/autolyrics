@@ -1,0 +1,242 @@
+import { useProjectStore } from "@/stores/project";
+import { AGENT_PRESETS, getAgentColor } from "@/domain/agent/colors";
+import type { Agent, AgentType } from "@/domain/agent/model";
+import { Button } from "@/ui/button";
+import { Popover } from "@/ui/popover";
+import { Select } from "@/ui/select";
+import { IconPlus, IconTrash } from "@tabler/icons-react";
+import { useCallback, useState } from "react";
+
+// -- Constants ----------------------------------------------------------------
+
+const AGENT_TYPE_OPTIONS = [
+  { value: "person", label: "Person" },
+  { value: "group", label: "Group" },
+  { value: "character", label: "Character" },
+  { value: "organization", label: "Organization" },
+  { value: "other", label: "Other" },
+];
+
+// -- Helpers ------------------------------------------------------------------
+
+function generateAgentId(existingAgents: { id: string }[]): string {
+  const usedNumbers = new Set<number>();
+  for (const a of existingAgents) {
+    const m = a.id.match(/^v(\d+)$/);
+    if (m) usedNumbers.add(Number.parseInt(m[1], 10));
+  }
+
+  let next = 1;
+  while (usedNumbers.has(next)) {
+    next++;
+  }
+  return `v${next}`;
+}
+
+// -- Components ---------------------------------------------------------------
+
+const AgentBadge: React.FC<
+  { agent: Agent; ref?: React.Ref<HTMLButtonElement> } & React.ButtonHTMLAttributes<HTMLButtonElement>
+> = ({ agent, ref, ...props }) => {
+  const color = getAgentColor(agent.id);
+
+  return (
+    <button
+      ref={ref}
+      type="button"
+      {...props}
+      className="flex items-center gap-2 pl-2 pr-2.5 py-1 rounded-md bg-composer-button cursor-pointer"
+    >
+      <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
+      <span className="text-sm text-composer-text">{agent.name || agent.id}</span>
+      <span className="text-xs text-composer-text-muted">{agent.id}</span>
+    </button>
+  );
+};
+
+const EditAgentPopover: React.FC<{
+  agent: Agent;
+  removable?: boolean;
+  onRemove?: () => void;
+}> = ({ agent, removable = true, onRemove }) => {
+  const updateAgent = useProjectStore((s) => s.updateAgent);
+  const [name, setName] = useState(() => agent.name || "");
+  const [type, setType] = useState<AgentType>(() => agent.type);
+
+  const handleSave = useCallback(
+    (close: () => void) => {
+      updateAgent(agent.id, { name: name.trim() || undefined, type });
+      close();
+    },
+    [updateAgent, agent.id, name, type],
+  );
+
+  const handleDelete = useCallback(
+    (close: () => void) => {
+      onRemove?.();
+      close();
+    },
+    [onRemove],
+  );
+
+  return (
+    <Popover placement="bottom-start" trigger={<AgentBadge agent={agent} />}>
+      {(close) => (
+        <div className="w-64 p-3">
+          <p className="mb-2 text-xs font-medium text-composer-text-secondary">Edit Agent · {agent.id}</p>
+          <div className="flex flex-col gap-2">
+            <input
+              type="text"
+              aria-label="Agent name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Agent name"
+              className="px-2 py-1.5 text-sm rounded-md bg-composer-input border border-composer-border focus:outline-none focus:border-composer-accent"
+            />
+            <Select
+              aria-label="Agent type"
+              value={type}
+              onChange={(next) => setType(next as AgentType)}
+              options={AGENT_TYPE_OPTIONS}
+              placement="bottom-start"
+              className="w-full"
+            />
+            <div className="flex gap-2">
+              <Button size="sm" variant="primary" onClick={() => handleSave(close)} className="flex-1">
+                Save
+              </Button>
+              {removable && onRemove && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  aria-label="Delete agent"
+                  onClick={() => handleDelete(close)}
+                  className="text-composer-error-text bg-composer-error/80 hover:bg-composer-error flex items-center gap-2"
+                >
+                  <IconTrash className="size-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </Popover>
+  );
+};
+
+const AddAgentPopover: React.FC = () => {
+  const agents = useProjectStore((s) => s.agents);
+  const addAgent = useProjectStore((s) => s.addAgent);
+  const [customName, setCustomName] = useState("");
+  const [customType, setCustomType] = useState<AgentType>("person");
+
+  const availablePresets = AGENT_PRESETS.filter((preset) => !agents.some((a) => a.id === preset.id));
+
+  const handleAddPreset = useCallback(
+    (preset: Agent, close: () => void) => {
+      addAgent(preset);
+      close();
+    },
+    [addAgent],
+  );
+
+  const handleAddCustom = useCallback(
+    (close: () => void) => {
+      if (!customName.trim()) return;
+      addAgent({
+        id: generateAgentId(agents),
+        type: customType,
+        name: customName.trim(),
+      });
+      setCustomName("");
+      close();
+    },
+    [addAgent, agents, customName, customType],
+  );
+
+  return (
+    <Popover
+      placement="bottom-start"
+      trigger={
+        <Button size="sm" hasIcon>
+          <IconPlus className="size-3.5" />
+          Add
+        </Button>
+      }
+    >
+      {(close) => (
+        <div className="w-64 p-3">
+          {availablePresets.length > 0 && (
+            <>
+              <p className="mb-2 text-xs font-medium text-composer-text-secondary">Presets</p>
+              <div className="flex flex-col gap-1 mb-3">
+                {availablePresets.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => handleAddPreset(preset, close)}
+                    className="flex items-center gap-2 px-2 py-1.5 text-left rounded-md cursor-pointer hover:bg-composer-button"
+                  >
+                    <span
+                      className="size-2 rounded-full shrink-0"
+                      style={{ backgroundColor: getAgentColor(preset.id) }}
+                    />
+                    <span className="text-sm text-composer-text">{preset.name}</span>
+                    <span className="text-xs text-composer-text-muted">{preset.id}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          <p className="mb-2 text-xs font-medium text-composer-text-secondary">Custom Agent</p>
+          <div className="flex flex-col gap-2">
+            <input
+              type="text"
+              aria-label="Custom agent name"
+              value={customName}
+              onChange={(e) => setCustomName(e.target.value)}
+              placeholder="Agent name"
+              className="px-2 py-1.5 text-sm rounded-md bg-composer-input border border-composer-border focus:outline-none focus:border-composer-accent"
+            />
+            <Select
+              aria-label="Custom agent type"
+              value={customType}
+              onChange={(next) => setCustomType(next as AgentType)}
+              options={AGENT_TYPE_OPTIONS}
+              placement="bottom-start"
+              className="w-full"
+            />
+            <Button size="sm" variant="primary" onClick={() => handleAddCustom(close)} disabled={!customName.trim()}>
+              Add Custom Agent
+            </Button>
+          </div>
+        </div>
+      )}
+    </Popover>
+  );
+};
+
+const AgentManager: React.FC = () => {
+  const agents = useProjectStore((s) => s.agents);
+  const removeAgentWithHistory = useProjectStore((s) => s.removeAgentWithHistory);
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-sm font-medium text-composer-text-secondary">Agents</span>
+      {agents.map((agent) => (
+        <EditAgentPopover
+          key={agent.id}
+          agent={agent}
+          removable={agents.length > 1}
+          onRemove={() => removeAgentWithHistory(agent.id)}
+        />
+      ))}
+      <AddAgentPopover />
+    </div>
+  );
+};
+
+// -- Exports ------------------------------------------------------------------
+
+export { AgentManager };

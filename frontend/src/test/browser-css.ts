@@ -1,0 +1,71 @@
+import indexCss from "@/index.css?raw";
+
+// The browser project has no Tailwind plugin, so a rule a test needs to observe has to be lifted
+// out of the real src/index.css and installed by hand.
+
+// -- Constants -----------------------------------------------------------------
+
+const WAVEFORM_SWEEP_ANIMATION = "waveform-loading-sweep";
+const WAVEFORM_DOTS_UTILITY = "waveform-loading-dots";
+
+// Without these the timeline's layers all stack in flow, which pushes the rows past
+// react-virtuoso's viewport and leaves it with nothing to render.
+const POSITION_UTILITIES_CSS = ".relative{position:relative}.absolute{position:absolute}.sticky{position:sticky;top:0}";
+
+// Overlays only cover their siblings, and so only swallow clicks, once they span their parent.
+const HIT_TESTING_UTILITIES_CSS = ".inset-0{inset:0}.pointer-events-none{pointer-events:none}";
+
+// -- Helpers -------------------------------------------------------------------
+
+function extractCssBlock(header: RegExp): string {
+  const match = header.exec(indexCss);
+  if (!match) throw new Error(`no CSS block matching ${header} in src/index.css`);
+  const bodyStart = match.index + match[0].length;
+  let depth = 1;
+  for (let i = bodyStart; i < indexCss.length; i++) {
+    if (indexCss[i] === "{") depth++;
+    else if (indexCss[i] === "}" && --depth === 0) return indexCss.slice(bodyStart, i);
+  }
+  throw new Error(`unbalanced CSS block matching ${header} in src/index.css`);
+}
+
+function utilityRule(name: string): string {
+  return `.${name} {${extractCssBlock(new RegExp(`@utility\\s+${name}\\s*\\{`))}}`;
+}
+
+function keyframesRule(name: string): string {
+  return `@keyframes ${name} {${extractCssBlock(new RegExp(`@keyframes\\s+${name}\\s*\\{`))}}`;
+}
+
+function installStyleSheet(css: string): HTMLStyleElement {
+  const style = document.createElement("style");
+  style.textContent = css;
+  document.head.appendChild(style);
+  return style;
+}
+
+// -- Rules ---------------------------------------------------------------------
+
+// Help's content only scrolls once it is height-bound: the deferred host before OverlayScrollbars starts, the viewport after.
+const HELP_CONTENT_SCROLLER_CSS = [
+  "[data-overlayscrollbars-initialize]:not([data-overlayscrollbars]):has([data-help-content])",
+  "[data-overlayscrollbars-viewport]",
+]
+  .join(",")
+  .concat("{max-height:200px!important;overflow-y:scroll!important}");
+
+const WAVEFORM_SWEEP_CSS = [utilityRule(WAVEFORM_DOTS_UTILITY), keyframesRule(WAVEFORM_SWEEP_ANIMATION)].join("\n");
+
+const FLOATING_LAYER_CSS = utilityRule("layer-floating");
+
+// -- Exports -------------------------------------------------------------------
+
+export {
+  FLOATING_LAYER_CSS,
+  HELP_CONTENT_SCROLLER_CSS,
+  HIT_TESTING_UTILITIES_CSS,
+  installStyleSheet,
+  POSITION_UTILITIES_CSS,
+  WAVEFORM_SWEEP_ANIMATION,
+  WAVEFORM_SWEEP_CSS,
+};

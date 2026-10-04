@@ -1,0 +1,504 @@
+@import url("https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Geist+Mono:wght@500;600&display=swap");
+@import "tailwindcss";
+@import "@braccato/core/styles/variables.css" layer(braccato-defaults);
+@import "@braccato/core/styles/lyrics.css";
+@import "@braccato/core/styles/instrumental.css";
+
+@theme {
+  /* Background Colors */
+  --color-composer-bg: #28292c;
+  --color-composer-bg-dark: #1a1a1c;
+  --color-composer-bg-elevated: #3e3e41;
+  --color-composer-overlay: rgba(0, 0, 0, 0.2);
+  --color-composer-overlay-hover: rgba(0, 0, 0, 0.3);
+
+  /* Text Colors */
+  --color-composer-text: #fff;
+  --color-composer-text-secondary: rgba(255, 255, 255, 0.75);
+  --color-composer-text-muted: rgba(255, 255, 255, 0.5);
+  --color-composer-text-disabled: rgba(255, 255, 255, 0.4);
+  --color-composer-text-tertiary: #aaa;
+  --color-composer-text-faint: #696b77;
+
+  /* Interactive Elements */
+  --color-composer-button: hsla(0, 0%, 100%, 0.1);
+  --color-composer-button-hover: hsla(0, 0%, 100%, 0.2);
+  --color-composer-input: rgba(255, 255, 255, 0.05);
+  --color-composer-border: rgba(255, 255, 255, 0.1);
+  --color-composer-border-hover: rgba(255, 255, 255, 0.15);
+
+  /* Accent Colors */
+  --color-composer-accent: rgb(129, 140, 248);
+  --color-composer-accent-dark: rgb(100, 112, 220);
+  --color-composer-accent-darker: rgb(80, 90, 200);
+  --color-composer-accent-text: rgb(165, 180, 252);
+  --color-composer-on-accent: #ffffff;
+  --color-composer-accent-warm: #d4a5a5;
+  --color-composer-link: #5865f2;
+
+  /* Error/Warning */
+  --color-composer-error: #b45555;
+  --color-composer-error-text: #ffe5e5;
+  --color-composer-warning: #f5a623;
+  --color-composer-explicit: #ff7a85;
+  --color-composer-positive: #4fd6c0;
+  --color-composer-negative: #f2777a;
+
+  /* Waveform */
+  --color-composer-wave: #737476;
+  --color-composer-wave-progress: rgb(129, 140, 248);
+  --color-composer-snap: #ffd66b;
+  --color-composer-onset: #4fd6c0;
+
+  /* Typography */
+  --font-family-sans: "Satoshi", "Avenir", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-family-mono: "Geist Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Animation */
+  --transition-timing-scroll: cubic-bezier(0.86, 0, 0.07, 1);
+}
+
+/* Base styles */
+html {
+  font-size: 16px;
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background-color: var(--color-composer-bg);
+  color: var(--color-composer-text);
+  font-family: var(--font-family-sans);
+}
+
+/* Braccato preview. These must stay on :root: variables.css derives the active
+   and inactive lyric colours from them there, so setting them lower never lands. */
+:root {
+  --blyrics-text-color: var(--color-composer-text);
+  --blyrics-inactive-opacity: 0.2;
+  --blyrics-font-family: "Satoshi", sans-serif;
+  --blyrics-font-size: 2.5rem;
+}
+
+/* The element is the scroller braccato autoscrolls, which is what centres the
+   active line. */
+braccato-lyrics {
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+braccato-lyrics::-webkit-scrollbar {
+  display: none;
+}
+
+braccato-lyrics:has(.blyrics-user-scrolling) {
+  scrollbar-color: color-mix(in srgb, var(--color-composer-text) 15%, transparent) transparent;
+  scrollbar-width: thin;
+}
+
+braccato-lyrics:has(.blyrics-user-scrolling)::-webkit-scrollbar {
+  display: block;
+  width: 6px;
+}
+
+braccato-lyrics:has(.blyrics-user-scrolling)::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--color-composer-text) 15%, transparent);
+  border-radius: 3px;
+}
+
+/* lyrics.css spends --blyrics-padding-bottom but hardcodes the top. */
+braccato-lyrics .blyrics-container {
+  padding-top: var(--blyrics-padding-top, 2rem);
+}
+
+/* The sidebar layout halves the Preview sizes. The theme sets the padding on the
+   container, so overriding it needs the deeper selector. */
+[data-lyrics-layout="sidebar"] {
+  --blyrics-font-size: 1.25rem;
+  --blyrics-translated-font-size: 1rem;
+  --blyrics-padding-top: 1rem;
+  --am-lyrics-compact-font-size: 1.25rem;
+  --am-lyrics-compact-line-spacing: 12px;
+}
+
+[data-lyrics-layout="sidebar"] .blyrics-container {
+  --blyrics-padding: 0.625rem;
+}
+
+/* Text selection */
+::selection {
+  background-color: color-mix(in srgb, var(--color-composer-accent) 40%, transparent);
+  color: var(--color-composer-text);
+}
+
+/* Focus visible indicators - minimal for utility app */
+:focus-visible {
+  outline: none;
+}
+
+/* Geist Mono base weight */
+@layer base {
+  .font-mono {
+    font-weight: 500;
+  }
+}
+
+/* Every portalled layer (modal, popover, menu, tooltip) shares one z-index so open order decides what is on top. */
+@utility layer-floating {
+  z-index: 100;
+}
+
+@utility overflow-anchor-none {
+  overflow-anchor: none;
+}
+
+@utility tap-highlight-none {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+@utility snap-onset-line {
+  width: 1px;
+  background: repeating-linear-gradient(180deg, var(--color-composer-onset) 0 5px, transparent 5px 11px);
+  -webkit-mask: linear-gradient(180deg, transparent 0, #000 30%, #000 70%, transparent 100%);
+  mask: linear-gradient(180deg, transparent 0, #000 30%, #000 70%, transparent 100%);
+  opacity: 0.75;
+}
+
+@utility snap-onset-covered {
+  opacity: 0;
+}
+
+@keyframes snap-onset-enter {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px) scaleY(0.5);
+  }
+  to {
+    opacity: 0.75;
+    transform: translateX(-50%) translateY(0) scaleY(1);
+  }
+}
+
+.snap-onset-enter {
+  transform-origin: center bottom;
+  will-change: transform, opacity;
+  opacity: 0;
+  transform: translateX(-50%) translateY(8px) scaleY(0.5);
+  animation: snap-onset-enter 300ms cubic-bezier(0.33, 1.2, 0.66, 1) forwards;
+}
+
+@utility snap-custom-line {
+  width: 2px;
+  background: var(--color-composer-warning);
+  mask: linear-gradient(rgba(0, 0, 0, 0) 0px, rgb(0, 0, 0) 30%, rgb(0, 0, 0) 70%, rgba(0, 0, 0, 0) 100%);
+}
+
+@utility snap-custom-head {
+  width: 14px;
+  height: 14px;
+  background: var(--color-composer-warning);
+  border-radius: 50% 50% 50% 0;
+  transform: translateX(-50%) rotate(45deg);
+  box-shadow: 0 2px 9px rgba(0, 0, 0, 0.5);
+}
+
+@utility snap-marker-flash {
+  width: 2px;
+  background: #fff;
+}
+
+@utility waveform-loading-dots {
+  background-image: radial-gradient(circle at center, rgba(255, 255, 255, 0.1) 1px, transparent 1.5px);
+  background-size: 8px 8px;
+  background-position: 4px 4px;
+  isolation: isolate;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(
+      circle at center,
+      color-mix(in srgb, var(--color-composer-accent) 85%, transparent) 1.2px,
+      transparent 1.7px
+    );
+    background-size: 8px 8px;
+    background-position: 4px 4px;
+    mask-image: linear-gradient(135deg, transparent 0%, transparent 35%, black 50%, transparent 65%, transparent 100%);
+    -webkit-mask-image: linear-gradient(
+      135deg,
+      transparent 0%,
+      transparent 35%,
+      black 50%,
+      transparent 65%,
+      transparent 100%
+    );
+    mask-size: 50vw 100%;
+    -webkit-mask-size: 50vw 100%;
+    mask-repeat: repeat;
+    -webkit-mask-repeat: repeat;
+  }
+
+  /* Gated: Blink cannot composite mask-position, so an always-on sweep repaints every frame at opacity 0. */
+  &[data-sweeping]::before {
+    animation: waveform-loading-sweep 1.8s linear infinite;
+  }
+}
+
+@keyframes waveform-loading-sweep {
+  0% {
+    mask-position: 0 0;
+    -webkit-mask-position: 0 0;
+  }
+  100% {
+    mask-position: 50vw 0;
+    -webkit-mask-position: 50vw 0;
+  }
+}
+
+@utility waveform-armed {
+  cursor: crosshair;
+  box-shadow: inset 0 0 20px -2px color-mix(in srgb, var(--color-composer-warning) 18%, transparent);
+}
+
+/* Timeline panning mode */
+@layer components {
+  .is-panning,
+  .is-panning * {
+    @apply cursor-grabbing!;
+  }
+  .is-panning * {
+    @apply pointer-events-none!;
+  }
+  .is-panning *:hover {
+    background-color: transparent !important;
+  }
+
+  .expanded-hit-sm {
+    @apply before:content-[''] before:absolute before:-inset-2 before:pointer-events-auto;
+  }
+
+  .expanded-hit-lg {
+    @apply before:content-[''] before:absolute before:-inset-2 before:pointer-events-auto;
+  }
+
+  .expanded-hit-x-lg {
+    @apply before:content-[''] before:absolute before:top-0 before:-left-4 before:-right-4 before:bottom-0 before:pointer-events-auto;
+  }
+
+  .expanded-hit-x-sm {
+    @apply before:content-[''] before:absolute before:top-0 before:-left-2 before:-right-2 before:bottom-0 before:pointer-events-auto;
+  }
+
+  .playhead-yield,
+  .playhead-yield::before {
+    pointer-events: none !important;
+  }
+
+  .timeline-playhead-bar {
+    will-change: transform;
+    transition: transform 32ms linear;
+    mask-position: -16px 0;
+    -webkit-mask-position: -16px 0;
+    mask-size: calc(100% + 32px) 100%;
+    -webkit-mask-size: calc(100% + 32px) 100%;
+    mask-clip: no-clip;
+    -webkit-mask-clip: no-clip;
+  }
+}
+
+/* Range input styling */
+input[type="range"].settings-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 3px;
+  outline: none;
+}
+
+input[type="range"].settings-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-composer-text);
+  cursor: pointer;
+  margin-top: -5px;
+  border: none;
+}
+
+input[type="range"].settings-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+}
+
+input[type="range"].settings-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-composer-text);
+  cursor: pointer;
+  border: none;
+}
+
+input[type="range"].settings-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-composer-button);
+}
+
+input[type="range"].settings-slider::-moz-range-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-composer-accent);
+}
+
+/* Help search matches, painted with the Custom Highlight API; mirrors HighlightMatches */
+::highlight(help-match) {
+  color: var(--color-composer-accent-text);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--color-composer-accent) 70%, transparent);
+}
+
+/* Nudge the row or topic a link or search result jumped to; the target must be position: relative */
+[data-nudge]::before {
+  content: "";
+  position: absolute;
+  inset: 2px -12px;
+  border-radius: 10px;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--color-composer-accent) 8%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-composer-accent) 35%, transparent);
+  opacity: 0;
+  animation: nudge 1000ms ease-in-out 300ms forwards;
+}
+
+[data-help-topic][data-nudge]::before {
+  inset: -8px -12px;
+}
+
+@keyframes nudge {
+  0% {
+    opacity: 0;
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes nudge-static {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* OverlayScrollbars: ensure tracks render above timeline content */
+.os-scrollbar {
+  z-index: 200;
+}
+
+/* Timeline-specific: offset scrollbars to account for gutter (48px) and waveform (80px) */
+[data-timeline-scroll-host] .os-scrollbar-horizontal {
+  left: 48px !important;
+  width: calc(100% - 48px) !important;
+}
+
+[data-timeline-scroll-host] .os-scrollbar-vertical {
+  top: 80px !important;
+  height: calc(100% - 80px) !important;
+}
+
+.os-theme-light {
+  --os-handle-bg: rgba(255, 255, 255, 0.3);
+  --os-handle-bg-hover: rgba(255, 255, 255, 0.4);
+  --os-handle-bg-active: rgba(255, 255, 255, 0.5);
+}
+
+/* Ensure Virtuoso wrappers don't break sticky gutters */
+[data-scroll-container] [data-virtuoso-scroller] {
+  overflow: visible !important;
+}
+
+/* Hide scrollbars during playback */
+.scrollbar-hidden > .os-scrollbar {
+  opacity: 0 !important;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.is-explicit-word {
+  background-image: repeating-linear-gradient(
+    45deg,
+    color-mix(in srgb, var(--color-composer-explicit) 20%, transparent) 0 3px,
+    transparent 3px 8px
+  );
+}
+
+[data-help-content] [data-inline-key-badge] {
+  margin-left: 0.25rem;
+  margin-right: 0.25rem;
+}
+
+.is-snapped {
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--color-composer-snap) 85%, transparent), 0 0 14px 2px
+    color-mix(in srgb, var(--color-composer-snap) 28%, transparent), 0 1px 2px rgba(0, 0, 0, 0.4);
+  transition: box-shadow 110ms cubic-bezier(0.25, 1.4, 0.5, 1);
+}
+
+/* On a light surface a near-solid ring reads as a heavy dark outline, so soften
+   the ring to a glow, lean on the halo for presence, and lighten the shadow. */
+[data-scheme="light"] .is-snapped {
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--color-composer-snap) 70%, transparent), 0 0 12px 2px
+    color-mix(in srgb, var(--color-composer-snap) 45%, transparent), 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  [data-nudge]::before {
+    animation-name: nudge-static;
+    animation-duration: 1000ms !important;
+    animation-timing-function: steps(1, end);
+  }
+  .is-snapped {
+    transition: none;
+  }
+  .snap-onset-enter {
+    animation-delay: 0ms !important;
+  }
+}
+
+@utility theme-swatch-input {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 0;
+  background: none;
+
+  &::-webkit-color-swatch-wrapper {
+    padding: 0;
+  }
+  &::-webkit-color-swatch {
+    border: none;
+    border-radius: 6px;
+  }
+  &::-moz-color-swatch {
+    border: none;
+    border-radius: 6px;
+  }
+}

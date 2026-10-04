@@ -1,0 +1,73 @@
+import { useReconciledBuffer } from "@/hooks/useReconciledBuffer";
+import { Button } from "@/ui/button";
+import { IconButton } from "@/ui/icon-button";
+import { INPUT_STYLES } from "@/ui/input-styles";
+import { cn } from "@/utils/cn";
+import { type Row, reconcileRows, sameStrings, seedRows } from "@/views/export/metadata-field-rows";
+import { IconPlus, IconX } from "@tabler/icons-react";
+import { nanoid } from "nanoid";
+
+// -- Interfaces ---------------------------------------------------------------
+
+interface MetadataFieldListProps {
+  label: string;
+  itemNoun: string;
+  values: string[];
+  placeholder?: string;
+  onChange: (next: string[]) => void;
+}
+
+// -- Component ----------------------------------------------------------------
+
+const MetadataFieldList: React.FC<MetadataFieldListProps> = ({ label, itemNoun, values, placeholder, onChange }) => {
+  const { rows, commit } = useReconciledBuffer<Row, string[]>(values, onChange, {
+    seed: seedRows,
+    reconcile: reconcileRows,
+    equal: sameStrings,
+    emit: (next) => next.map((row) => row.value),
+  });
+
+  const handleEdit = (id: string, value: string) =>
+    commit(rows.map((row) => (row.id === id ? { ...row, value } : row)));
+  const handleRemove = (id: string) => commit(rows.filter((row) => row.id !== id));
+  const handleAdd = () => commit([...rows, { id: nanoid(), value: "" }]);
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-xs font-medium text-composer-text-secondary select-none">{label}</span>
+      {rows.map((row, index) => (
+        <div key={row.id} className="flex items-center gap-2">
+          <input
+            type="text"
+            aria-label={`${itemNoun} ${index + 1}`}
+            value={row.value}
+            placeholder={placeholder}
+            onChange={(e) => handleEdit(row.id, e.target.value)}
+            className={cn("flex-1", INPUT_STYLES)}
+          />
+          <IconButton
+            label={`Remove ${itemNoun.toLowerCase()} ${index + 1}`}
+            icon={<IconX className="size-4" />}
+            variant="ghost"
+            onClick={() => handleRemove(row.id)}
+          />
+        </div>
+      ))}
+      <Button
+        hasIcon
+        size="sm"
+        variant="secondary"
+        className="self-start"
+        aria-label={`Add ${itemNoun.toLowerCase()}`}
+        onClick={handleAdd}
+      >
+        <IconPlus className="size-3.5" />
+        Add {itemNoun.toLowerCase()}
+      </Button>
+    </div>
+  );
+};
+
+// -- Exports ------------------------------------------------------------------
+
+export { MetadataFieldList };
